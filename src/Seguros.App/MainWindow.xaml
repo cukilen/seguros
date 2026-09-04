@@ -1,0 +1,36 @@
+<Window x:Class="Seguros.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vistas="clr-namespace:Seguros.App.Vistas"
+        Title="Gestión Integral de Seguros" Height="650" Width="1000"
+        WindowStartupLocation="CenterScreen">
+    <TabControl Margin="8">
+        <TabItem Header="Compañías">
+            <vistas:CompaniasView/>
+        </TabItem>
+        <TabItem Header="Asegurados">
+            <vistas:AseguradosView/>
+        </TabItem>
+        <TabItem Header="Pólizas">
+            <vistas:PolizasView/>
+        </TabItem>
+        <TabItem Header="Flotas">
+            <vistas:FlotasView/>
+        </TabItem>
+        <TabItem Header="Endosos">
+            <vistas:EndososView/>
+        </TabItem>
+        <TabItem Header="Vencimientos">
+            <vistas:VencimientosView/>
+        </TabItem>
+        <TabItem Header="Importación">
+            <vistas:ImportacionView/>
+        </TabItem>
+        <TabItem Header="Comisiones">
+            <vistas:ComisionesView/>
+        </TabItem>
+        <TabItem Header="Backup">
+            <vistas:BackupView/>
+        </TabItem>
+    </TabControl>
+</Window>

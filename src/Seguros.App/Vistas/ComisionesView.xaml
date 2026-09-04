@@ -1,0 +1,55 @@
+<UserControl x:Class="Seguros.App.Vistas.ComisionesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <GroupBox Header="Configurar % de comisión por compañía y ramo" Grid.Row="0" Padding="8" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Compañía"/>
+                    <ComboBox x:Name="CmbCompania" Width="150" DisplayMemberPath="Nombre"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Ramo"/>
+                    <ComboBox x:Name="CmbRamo" Width="140"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="% Comisión"/>
+                    <TextBox x:Name="TxtPorcentaje" Width="70"/>
+                </StackPanel>
+                <Button Content="Guardar" VerticalAlignment="Bottom" Height="26" Click="BtnGuardarComision_Click"/>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Header="Generar liquidación de comisiones" Grid.Row="1" Padding="8" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Período desde"/>
+                    <DatePicker x:Name="DpDesde" Width="120"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Período hasta"/>
+                    <DatePicker x:Name="DpHasta" Width="120"/>
+                </StackPanel>
+                <Button Content="Generar liquidación" VerticalAlignment="Bottom" Height="26" Click="BtnGenerarLiquidacion_Click"/>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Header="Historial de liquidaciones" Grid.Row="2">
+            <DataGrid x:Name="Grid" AutoGenerateColumns="False" IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="40"/>
+                    <DataGridTextColumn Header="Desde" Binding="{Binding PeriodoDesde}" Width="100"/>
+                    <DataGridTextColumn Header="Hasta" Binding="{Binding PeriodoHasta}" Width="100"/>
+                    <DataGridTextColumn Header="Total" Binding="{Binding MontoTotal}" Width="100"/>
+                    <DataGridTextColumn Header="Generada" Binding="{Binding FechaGeneracion}" Width="150"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
+    </Grid>
+</UserControl>

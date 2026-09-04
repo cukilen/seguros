@@ -1,0 +1,57 @@
+<UserControl x:Class="Seguros.App.Vistas.FlotasView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Póliza de flota:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox x:Name="CmbPoliza" Width="260" SelectionChanged="CmbPoliza_SelectionChanged" Margin="0,0,12,0"/>
+            <Button Content="Actualizar listado de pólizas" Click="BtnActualizarPolizas_Click" Margin="0,0,12,0"/>
+            <Button Content="Marcar como flota" Click="BtnMarcarComoFlota_Click"/>
+        </StackPanel>
+
+        <GroupBox Header="Agregar unidad a la flota seleccionada" Grid.Row="1" Padding="8" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Patente"/>
+                    <TextBox x:Name="TxtPatente" Width="100"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Marca"/>
+                    <TextBox x:Name="TxtMarca" Width="110"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Modelo"/>
+                    <TextBox x:Name="TxtModelo" Width="110"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Uso"/>
+                    <TextBox x:Name="TxtUso" Width="110"/>
+                </StackPanel>
+                <Button Content="Agregar unidad" VerticalAlignment="Bottom" Height="26" Click="BtnAgregarUnidad_Click"/>
+            </StackPanel>
+        </GroupBox>
+
+        <DataGrid x:Name="Grid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="40"/>
+                <DataGridTextColumn Header="Patente" Binding="{Binding Patente}" Width="100"/>
+                <DataGridTextColumn Header="Marca" Binding="{Binding Marca}" Width="120"/>
+                <DataGridTextColumn Header="Modelo" Binding="{Binding Modelo}" Width="120"/>
+                <DataGridTextColumn Header="Uso" Binding="{Binding Uso}" Width="120"/>
+                <DataGridCheckBoxColumn Header="Activa" Binding="{Binding Activa}" Width="60"/>
+                <DataGridTextColumn Header="Fecha baja" Binding="{Binding FechaBaja}" Width="100"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+            <Button Content="Dar de baja unidad seleccionada" Click="BtnBajaUnidad_Click"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
