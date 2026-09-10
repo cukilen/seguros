@@ -46,6 +46,19 @@ public class VencimientoServiceTests : IDisposable
         Assert.Equal("P-1", proximas[0].Numero);
     }
 
+    [Fact] // Una póliza ya vencida no debe listarse como "próxima a vencer"
+    public async Task ListarProximasAVencer_noIncluyePolizaYaVencida()
+    {
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        await CrearPoliza("P-1", hoy.AddDays(-30));
+        await CrearPoliza("P-2", hoy.AddDays(10));
+
+        var proximas = await _service.ListarProximasAVencer(diasVentana: 30);
+
+        Assert.Single(proximas);
+        Assert.Equal("P-2", proximas[0].Numero);
+    }
+
     [Fact] // Filtrado de vencimientos por compañía
     public async Task ListarProximasAVencer_filtraPorCompania()
     {

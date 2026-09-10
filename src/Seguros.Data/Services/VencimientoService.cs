@@ -21,6 +21,7 @@ public class VencimientoService
         var query = _db.Polizas.Include(p => p.Compania).Include(p => p.Asegurado).Include(p => p.Ramo)
             .Where(p => p.Estado == EstadoPoliza.Vigente
                         && !p.VencimientoGestionado
+                        && p.VigenciaHasta >= hoy
                         && p.VigenciaHasta <= limite);
 
         if (productorId is not null) query = query.Where(p => p.ProductorId == productorId);

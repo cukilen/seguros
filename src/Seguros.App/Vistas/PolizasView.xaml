@@ -60,7 +60,7 @@
                 <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="40"/>
                 <DataGridTextColumn Header="Asegurado" Binding="{Binding Asegurado.Nombre}" Width="150"/>
                 <DataGridTextColumn Header="Compañía" Binding="{Binding Compania.Nombre}" Width="130"/>
-                <DataGridTextColumn Header="Ramo" Binding="{Binding Ramo}" Width="120"/>
+                <DataGridTextColumn Header="Ramo" Binding="{Binding Ramo.Nombre}" Width="120"/>
                 <DataGridTextColumn Header="Número" Binding="{Binding Numero}" Width="90"/>
                 <DataGridTextColumn Header="Desde" Binding="{Binding VigenciaDesde}" Width="100"/>
                 <DataGridTextColumn Header="Hasta" Binding="{Binding VigenciaHasta}" Width="100"/>
