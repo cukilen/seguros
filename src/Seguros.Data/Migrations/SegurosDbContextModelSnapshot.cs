@@ -26,10 +26,6 @@ namespace Seguros.Data.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Documento")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Domicilio")
                         .HasColumnType("TEXT");
 
@@ -40,15 +36,21 @@ namespace Seguros.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("NroDocumento")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("ProductorId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Telefono")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("TipoDocumento")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductorId", "Documento")
+                    b.HasIndex("ProductorId", "TipoDocumento", "NroDocumento")
                         .IsUnique();
 
                     b.ToTable("Asegurados");
@@ -90,12 +92,14 @@ namespace Seguros.Data.Migrations
                     b.Property<decimal?>("PorcentajeComision")
                         .HasColumnType("decimal(5,2)");
 
-                    b.Property<int>("Ramo")
+                    b.Property<int>("RamoId")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompaniaId", "Ramo")
+                    b.HasIndex("RamoId");
+
+                    b.HasIndex("CompaniaId", "RamoId")
                         .IsUnique();
 
                     b.ToTable("CompaniaRamos");
@@ -195,8 +199,14 @@ namespace Seguros.Data.Migrations
                     b.Property<int>("AseguradoId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Cobertura")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("CompaniaId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("DescripcionRiesgo")
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("EsFlota")
                         .HasColumnType("INTEGER");
@@ -214,13 +224,19 @@ namespace Seguros.Data.Migrations
                     b.Property<int?>("PolizaOrigenId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal?>("Premio")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("Prima")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Producto")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("ProductorId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("Ramo")
+                    b.Property<int>("RamoId")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("VencimientoGestionado")
@@ -239,6 +255,8 @@ namespace Seguros.Data.Migrations
                     b.HasIndex("PolizaOrigenId");
 
                     b.HasIndex("ProductorId");
+
+                    b.HasIndex("RamoId");
 
                     b.HasIndex("CompaniaId", "Numero")
                         .IsUnique();
@@ -273,6 +291,92 @@ namespace Seguros.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Productores");
+                });
+
+            modelBuilder.Entity("Seguros.Domain.Entities.Ramo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("Ramos");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Nombre = "Autos"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Nombre = "Motos"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Nombre = "Vida"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Nombre = "Vida Colectivo"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Nombre = "Vida Individual"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Nombre = "Vida Obligatorio"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Nombre = "Incendio"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Nombre = "Combinado Familiar"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Nombre = "Responsabilidad Civil"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Nombre = "Accidentes Personales"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Nombre = "Integral de Comercio"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Nombre = "Caución"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Nombre = "Transporte / Cascos"
+                        });
                 });
 
             modelBuilder.Entity("Seguros.Domain.Entities.UnidadFlota", b =>
@@ -332,7 +436,15 @@ namespace Seguros.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Seguros.Domain.Entities.Ramo", "Ramo")
+                        .WithMany()
+                        .HasForeignKey("RamoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Compania");
+
+                    b.Navigation("Ramo");
                 });
 
             modelBuilder.Entity("Seguros.Domain.Entities.Endoso", b =>
@@ -401,6 +513,12 @@ namespace Seguros.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Seguros.Domain.Entities.Ramo", "Ramo")
+                        .WithMany()
+                        .HasForeignKey("RamoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Asegurado");
 
                     b.Navigation("Compania");
@@ -408,6 +526,8 @@ namespace Seguros.Data.Migrations
                     b.Navigation("PolizaOrigen");
 
                     b.Navigation("Productor");
+
+                    b.Navigation("Ramo");
                 });
 
             modelBuilder.Entity("Seguros.Domain.Entities.UnidadFlota", b =>

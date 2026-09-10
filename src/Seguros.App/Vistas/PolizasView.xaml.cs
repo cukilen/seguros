@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using Seguros.Domain.Entities;
-using Seguros.Domain.Enums;
 using Seguros.Domain.Exceptions;
 
 namespace Seguros.App.Vistas;
@@ -16,10 +15,6 @@ public partial class PolizasView : UserControl
     {
         InitializeComponent();
         Grid.ItemsSource = _filas;
-        CmbRamo.ItemsSource = Enum.GetValues<Ramo>();
-
-        CmbFiltroRamo.ItemsSource = new object[] { "(todos)" }.Concat(Enum.GetValues<Ramo>().Cast<object>());
-        CmbFiltroRamo.SelectedIndex = 0;
 
         Loaded += async (_, _) => await CargarCombosYGrilla();
     }
@@ -30,16 +25,21 @@ public partial class PolizasView : UserControl
         var companias = await AppServices.Companias.ListarCompanias();
         CmbCompania.ItemsSource = companias;
         CmbFiltroCompania.ItemsSource = new Compania?[] { null }.Concat(companias);
+
+        var ramos = await AppServices.Ramos.Listar();
+        CmbRamo.ItemsSource = ramos;
+        CmbFiltroRamo.ItemsSource = new Ramo?[] { null }.Concat(ramos);
+
         await Recargar();
     }
 
     private async Task Recargar()
     {
-        Ramo? ramo = CmbFiltroRamo.SelectedItem is Ramo r ? r : null;
+        var ramoId = (CmbFiltroRamo.SelectedItem as Ramo)?.Id;
         var companiaId = (CmbFiltroCompania.SelectedItem as Compania)?.Id;
 
         _filas.Clear();
-        foreach (var p in await AppServices.Polizas.Consultar(companiaId: companiaId, ramo: ramo))
+        foreach (var p in await AppServices.Polizas.Consultar(companiaId: companiaId, ramoId: ramoId))
             _filas.Add(p);
     }
 
@@ -54,16 +54,36 @@ public partial class PolizasView : UserControl
 
     private async void BtnAgregar_Click(object sender, RoutedEventArgs e)
     {
+        if (CmbAsegurado.SelectedItem is null || CmbCompania.SelectedItem is null || CmbRamo.SelectedItem is null)
+        {
+            Dialogos.Error("Elegí asegurado, compañía y ramo antes de agregar la póliza.", "Faltan datos");
+            return;
+        }
+        if (DpDesde.SelectedDate is null || DpHasta.SelectedDate is null)
+        {
+            Dialogos.Error("Completá las fechas de vigencia (desde y hasta).", "Faltan datos");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(TxtNumero.Text))
+        {
+            Dialogos.Error("Ingresá el número de póliza.", "Faltan datos");
+            return;
+        }
+        if (!decimal.TryParse(TxtPrima.Text.Trim(), NumberStyles.Number, CultureInfo.GetCultureInfo("es-AR"), out var prima))
+        {
+            Dialogos.Error("La prima ingresada no es un número válido.", "Dato inválido");
+            return;
+        }
+
         try
         {
             var asegurado = (Asegurado)CmbAsegurado.SelectedItem;
             var compania = (Compania)CmbCompania.SelectedItem;
             var ramo = (Ramo)CmbRamo.SelectedItem;
-            var desde = DateOnly.FromDateTime(DpDesde.SelectedDate!.Value);
-            var hasta = DateOnly.FromDateTime(DpHasta.SelectedDate!.Value);
-            var prima = decimal.Parse(TxtPrima.Text.Trim(), CultureInfo.GetCultureInfo("es-AR"));
+            var desde = DateOnly.FromDateTime(DpDesde.SelectedDate.Value);
+            var hasta = DateOnly.FromDateTime(DpHasta.SelectedDate.Value);
 
-            await AppServices.Polizas.AltaPoliza(AppServices.ProductorActual.Id, asegurado.Id, compania.Id, ramo,
+            await AppServices.Polizas.AltaPoliza(AppServices.ProductorActual.Id, asegurado.Id, compania.Id, ramo.Id,
                 TxtNumero.Text.Trim(), desde, hasta, prima, ChkFlota.IsChecked == true);
 
             TxtNumero.Clear(); TxtPrima.Clear(); ChkFlota.IsChecked = false;
@@ -71,17 +91,25 @@ public partial class PolizasView : UserControl
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo agregar", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (Exception)
-        {
-            MessageBox.Show("Revisá que todos los campos estén completos y sean válidos.", "Datos incompletos", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message);
         }
     }
 
     private async void BtnAnular_Click(object sender, RoutedEventArgs e)
     {
-        if (Grid.SelectedItem is not Poliza p) return;
+        if (Grid.SelectedItem is not Poliza p)
+        {
+            Dialogos.Error("Seleccioná primero una póliza de la lista.", "Nada seleccionado");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(TxtMotivoAnulacion.Text))
+        {
+            Dialogos.Error("Indicá el motivo de la anulación.", "Faltan datos");
+            return;
+        }
+        if (!Dialogos.Confirmar($"¿Anular la póliza N.º {p.Numero}? Esta acción no se puede deshacer.", "Confirmar anulación"))
+            return;
+
         try
         {
             await AppServices.Polizas.AnularPoliza(p.Id, TxtMotivoAnulacion.Text.Trim());
@@ -90,18 +118,36 @@ public partial class PolizasView : UserControl
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo anular", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message, "No se pudo anular");
         }
     }
 
     private async void BtnRenovar_Click(object sender, RoutedEventArgs e)
     {
-        if (Grid.SelectedItem is not Poliza p) return;
+        if (Grid.SelectedItem is not Poliza p)
+        {
+            Dialogos.Error("Seleccioná primero una póliza de la lista.", "Nada seleccionado");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(TxtNuevoNumero.Text))
+        {
+            Dialogos.Error("Ingresá el número de la póliza renovada.", "Faltan datos");
+            return;
+        }
+        if (DpNuevaVigenciaHasta.SelectedDate is null)
+        {
+            Dialogos.Error("Elegí la nueva fecha de fin de vigencia.", "Faltan datos");
+            return;
+        }
+        if (!decimal.TryParse(TxtNuevaPrima.Text.Trim(), NumberStyles.Number, CultureInfo.GetCultureInfo("es-AR"), out var nuevaPrima))
+        {
+            Dialogos.Error("La nueva prima ingresada no es un número válido.", "Dato inválido");
+            return;
+        }
+
         try
         {
-            var nuevaVigenciaHasta = DateOnly.FromDateTime(DpNuevaVigenciaHasta.SelectedDate!.Value);
-            var nuevaPrima = decimal.Parse(TxtNuevaPrima.Text.Trim(), CultureInfo.GetCultureInfo("es-AR"));
-
+            var nuevaVigenciaHasta = DateOnly.FromDateTime(DpNuevaVigenciaHasta.SelectedDate.Value);
             await AppServices.Polizas.RenovarPoliza(p.Id, TxtNuevoNumero.Text.Trim(), p.VigenciaHasta, nuevaVigenciaHasta, nuevaPrima);
 
             TxtNuevoNumero.Clear(); TxtNuevaPrima.Clear();
@@ -109,11 +155,7 @@ public partial class PolizasView : UserControl
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo renovar", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (Exception)
-        {
-            MessageBox.Show("Completá número, nueva vigencia y prima para renovar.", "Datos incompletos", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message, "No se pudo renovar");
         }
     }
 }

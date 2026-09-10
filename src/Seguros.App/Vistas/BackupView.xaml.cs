@@ -24,7 +24,7 @@ public partial class BackupView : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"No se pudo generar el backup: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            Dialogos.Error($"No se pudo generar el backup: {ex.Message}");
         }
     }
 }

@@ -22,8 +22,8 @@ public class ComisionServiceTests : IDisposable
     private async Task Preparar()
     {
         var productor = await new ProductorService(_ctx.Db).AltaProductor("P", "p1", "clave");
-        var asegurado = await new AseguradoService(_ctx.Db).AltaAsegurado(productor.Id, "Cliente", "20111222");
-        var compania = await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { Ramo.Autos });
+        var asegurado = await new AseguradoService(_ctx.Db).AltaAsegurado(productor.Id, "Cliente", TipoDocumento.Dni, "20111222");
+        var compania = await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { _ctx.RamoAutosId });
         _productorId = productor.Id;
         _aseguradoId = asegurado.Id;
         _companiaId = compania.Id;
@@ -32,8 +32,8 @@ public class ComisionServiceTests : IDisposable
     [Fact] // Alta de comisión pactada + cálculo automático al emitir una póliza
     public async Task CalcularComision_usaElPorcentajePactadoParaCompaniaYRamo()
     {
-        await _service.ConfigurarComision(_companiaId, Ramo.Autos, 10m);
-        var poliza = await _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, Ramo.Autos, "P-1",
+        await _service.ConfigurarComision(_companiaId, _ctx.RamoAutosId, 10m);
+        var poliza = await _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, _ctx.RamoAutosId, "P-1",
             DateOnly.FromDateTime(DateTime.Today), DateOnly.FromDateTime(DateTime.Today.AddYears(1)), 1000m);
 
         var comision = await _service.CalcularComision(poliza.Id);
@@ -44,7 +44,7 @@ public class ComisionServiceTests : IDisposable
     [Fact] // Póliza sin porcentaje de comisión configurado
     public async Task CalcularComision_sinPorcentajeConfigurado_devuelveNull()
     {
-        var poliza = await _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, Ramo.Autos, "P-1",
+        var poliza = await _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, _ctx.RamoAutosId, "P-1",
             DateOnly.FromDateTime(DateTime.Today), DateOnly.FromDateTime(DateTime.Today.AddYears(1)), 1000m);
 
         var comision = await _service.CalcularComision(poliza.Id);
@@ -55,10 +55,10 @@ public class ComisionServiceTests : IDisposable
     [Fact] // Generación de liquidación de un período
     public async Task GenerarLiquidacion_totalizaLasPolizasDelPeriodo()
     {
-        await _service.ConfigurarComision(_companiaId, Ramo.Autos, 10m);
+        await _service.ConfigurarComision(_companiaId, _ctx.RamoAutosId, 10m);
         var hoy = DateOnly.FromDateTime(DateTime.Today);
-        await _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, Ramo.Autos, "P-1", hoy, hoy.AddYears(1), 1000m);
-        await _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, Ramo.Autos, "P-2", hoy, hoy.AddYears(1), 2000m);
+        await _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, _ctx.RamoAutosId, "P-1", hoy, hoy.AddYears(1), 1000m);
+        await _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, _ctx.RamoAutosId, "P-2", hoy, hoy.AddYears(1), 2000m);
 
         var liquidacion = await _service.GenerarLiquidacion(_productorId, hoy.AddDays(-1), hoy.AddDays(1));
 

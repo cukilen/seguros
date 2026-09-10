@@ -33,21 +33,27 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Button Content="Generar vista previa" HorizontalAlignment="Left" Margin="0,8,0,0" Click="BtnGenerarVistaPrevia_Click"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="Compañía para este archivo (si no hay columna de compañía)" Style="{StaticResource Etiqueta}"/>
+                        <ComboBox x:Name="CmbCompaniaPorDefecto" Width="220" DisplayMemberPath="Nombre"/>
+                    </StackPanel>
+                    <Button Content="Generar vista previa" VerticalAlignment="Bottom" Click="BtnGenerarVistaPrevia_Click"/>
+                </StackPanel>
             </StackPanel>
         </GroupBox>
 
         <DataGrid x:Name="Grid" Grid.Row="3" AutoGenerateColumns="False">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Fila" Binding="{Binding Item.NumeroFila}" IsReadOnly="True" Width="40"/>
-                <DataGridTextColumn Header="Documento" Binding="{Binding Item.Documento}" IsReadOnly="True" Width="90"/>
+                <DataGridTextColumn Header="Documento" Binding="{Binding Item.NroDocumento}" IsReadOnly="True" Width="90"/>
                 <DataGridTextColumn Header="Asegurado" Binding="{Binding Item.NombreAsegurado}" IsReadOnly="True" Width="140"/>
                 <DataGridTextColumn Header="Compañía" Binding="{Binding Item.CompaniaNombre}" IsReadOnly="True" Width="110"/>
                 <DataGridTextColumn Header="Ramo" Binding="{Binding Item.RamoTexto}" IsReadOnly="True" Width="90"/>
                 <DataGridTextColumn Header="Póliza" Binding="{Binding Item.NumeroPoliza}" IsReadOnly="True" Width="80"/>
                 <DataGridTextColumn Header="Prima" Binding="{Binding Item.PrimaTexto}" IsReadOnly="True" Width="70"/>
                 <DataGridTextColumn Header="Error" Binding="{Binding Item.ErrorDeteccion}" IsReadOnly="True" Width="160"/>
-                <DataGridCheckBoxColumn Header="¿Duplicado?" Binding="{Binding Item.EsPosibleDuplicado}" IsReadOnly="True" Width="80"/>
+                <DataGridCheckBoxColumn Header="¿Duplicado?" Binding="{Binding Item.EsPosibleDuplicado, Mode=OneWay}" IsReadOnly="True" Width="80"/>
                 <DataGridComboBoxColumn Header="Acción" SelectedItemBinding="{Binding Accion}" ItemsSource="{Binding AccionesDisponibles}" Width="100"/>
             </DataGrid.Columns>
         </DataGrid>

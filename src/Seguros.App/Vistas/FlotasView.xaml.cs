@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
+using Seguros.Data.Services;
 using Seguros.Domain.Entities;
-using Seguros.Domain.Enums;
 using Seguros.Domain.Exceptions;
 
 namespace Seguros.App.Vistas;
@@ -20,7 +20,8 @@ public partial class FlotasView : UserControl
 
     private async Task CargarPolizas()
     {
-        var polizasAutos = (await AppServices.Polizas.Consultar(ramo: Ramo.Autos))
+        var polizasAutos = (await AppServices.Polizas.Consultar())
+            .Where(p => PolizaService.EsRamoAutos(p.Ramo))
             .Select(p => new PolizaItem(p))
             .ToList();
         CmbPoliza.ItemsSource = polizasAutos;
@@ -31,7 +32,11 @@ public partial class FlotasView : UserControl
 
     private async void BtnMarcarComoFlota_Click(object sender, RoutedEventArgs e)
     {
-        if (CmbPoliza.SelectedItem is not PolizaItem item) return;
+        if (CmbPoliza.SelectedItem is not PolizaItem item)
+        {
+            Dialogos.Error("Seleccioná primero una póliza de la lista.", "Nada seleccionado");
+            return;
+        }
         try
         {
             await AppServices.Flotas.MarcarComoFlota(item.Poliza.Id);
@@ -39,7 +44,7 @@ public partial class FlotasView : UserControl
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo marcar como flota", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message, "No se pudo marcar como flota");
         }
     }
 
@@ -55,7 +60,12 @@ public partial class FlotasView : UserControl
     {
         if (CmbPoliza.SelectedItem is not PolizaItem item)
         {
-            MessageBox.Show("Elegí primero una póliza de flota.", "Falta seleccionar", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error("Elegí primero una póliza de flota.", "Nada seleccionado");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(TxtPatente.Text))
+        {
+            Dialogos.Error("Ingresá la patente de la unidad.", "Faltan datos");
             return;
         }
 
@@ -67,13 +77,20 @@ public partial class FlotasView : UserControl
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo agregar la unidad", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message, "No se pudo agregar la unidad");
         }
     }
 
     private async void BtnBajaUnidad_Click(object sender, RoutedEventArgs e)
     {
-        if (Grid.SelectedItem is not UnidadFlota u) return;
+        if (Grid.SelectedItem is not UnidadFlota u)
+        {
+            Dialogos.Error("Seleccioná primero una unidad de la lista.", "Nada seleccionado");
+            return;
+        }
+        if (!Dialogos.Confirmar($"¿Dar de baja la unidad con patente \"{u.Patente}\"?", "Confirmar baja"))
+            return;
+
         await AppServices.Flotas.BajaUnidad(u.Id, DateOnly.FromDateTime(DateTime.Today));
         CmbPoliza_SelectionChanged(sender, null!);
     }

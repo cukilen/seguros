@@ -22,15 +22,15 @@ public class VencimientoServiceTests : IDisposable
     private async Task Preparar()
     {
         var productor = await new ProductorService(_ctx.Db).AltaProductor("P", "p1", "clave");
-        var asegurado = await new AseguradoService(_ctx.Db).AltaAsegurado(productor.Id, "Cliente", "20111222");
-        var compania = await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { Ramo.Autos });
+        var asegurado = await new AseguradoService(_ctx.Db).AltaAsegurado(productor.Id, "Cliente", TipoDocumento.Dni, "20111222");
+        var compania = await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { _ctx.RamoAutosId });
         _productorId = productor.Id;
         _aseguradoId = asegurado.Id;
         _companiaId = compania.Id;
     }
 
     private Task<Domain.Entities.Poliza> CrearPoliza(string numero, DateOnly vigenciaHasta) =>
-        _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, Ramo.Autos, numero,
+        _polizas.AltaPoliza(_productorId, _aseguradoId, _companiaId, _ctx.RamoAutosId, numero,
             DateOnly.FromDateTime(DateTime.Today.AddYears(-1)), vigenciaHasta, 1000m);
 
     [Fact] // Póliza dentro de la ventana de alerta
@@ -50,9 +50,9 @@ public class VencimientoServiceTests : IDisposable
     public async Task ListarProximasAVencer_filtraPorCompania()
     {
         var hoy = DateOnly.FromDateTime(DateTime.Today);
-        var otraCompania = await new CompaniaService(_ctx.Db).AltaCompania("Zurich", new[] { Ramo.Autos });
+        var otraCompania = await new CompaniaService(_ctx.Db).AltaCompania("Zurich", new[] { _ctx.RamoAutosId });
         await CrearPoliza("P-1", hoy.AddDays(5));
-        await _polizas.AltaPoliza(_productorId, _aseguradoId, otraCompania.Id, Ramo.Autos, "P-2",
+        await _polizas.AltaPoliza(_productorId, _aseguradoId, otraCompania.Id, _ctx.RamoAutosId, "P-2",
             hoy.AddYears(-1), hoy.AddDays(5), 1000m);
 
         var deLaCompania = await _service.ListarProximasAVencer(diasVentana: 30, companiaId: _companiaId);

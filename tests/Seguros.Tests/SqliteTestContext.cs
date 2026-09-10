@@ -27,6 +27,12 @@ public class SqliteTestContext : IDisposable
         Db.Database.EnsureCreated();
     }
 
+    /// <summary>Id del ramo "Autos" del catálogo sembrado (ver SembrarRamos).</summary>
+    public int RamoAutosId => Db.Ramos.Single(r => r.Nombre == "Autos").Id;
+
+    /// <summary>Id del ramo "Vida" del catálogo sembrado (ver SembrarRamos).</summary>
+    public int RamoVidaId => Db.Ramos.Single(r => r.Nombre == "Vida").Id;
+
     public void Dispose()
     {
         Db.Dispose();

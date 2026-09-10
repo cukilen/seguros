@@ -11,32 +11,32 @@
         <GroupBox Header="Configurar % de comisión por compañía y ramo" Grid.Row="0" Padding="8" Margin="0,0,0,8">
             <StackPanel Orientation="Horizontal">
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Compañía"/>
+                    <TextBlock Text="Compañía" Style="{StaticResource Etiqueta}"/>
                     <ComboBox x:Name="CmbCompania" Width="150" DisplayMemberPath="Nombre"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Ramo"/>
-                    <ComboBox x:Name="CmbRamo" Width="140"/>
+                    <TextBlock Text="Ramo" Style="{StaticResource Etiqueta}"/>
+                    <ComboBox x:Name="CmbRamo" Width="140" DisplayMemberPath="Nombre"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="% Comisión"/>
+                    <TextBlock Text="% Comisión" Style="{StaticResource Etiqueta}"/>
                     <TextBox x:Name="TxtPorcentaje" Width="70"/>
                 </StackPanel>
-                <Button Content="Guardar" VerticalAlignment="Bottom" Height="26" Click="BtnGuardarComision_Click"/>
+                <Button Content="Guardar" VerticalAlignment="Bottom" Click="BtnGuardarComision_Click"/>
             </StackPanel>
         </GroupBox>
 
         <GroupBox Header="Generar liquidación de comisiones" Grid.Row="1" Padding="8" Margin="0,0,0,8">
             <StackPanel Orientation="Horizontal">
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Período desde"/>
-                    <DatePicker x:Name="DpDesde" Width="120"/>
+                    <TextBlock Text="Período desde" Style="{StaticResource Etiqueta}"/>
+                    <DatePicker x:Name="DpDesde" Width="150"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Período hasta"/>
-                    <DatePicker x:Name="DpHasta" Width="120"/>
+                    <TextBlock Text="Período hasta" Style="{StaticResource Etiqueta}"/>
+                    <DatePicker x:Name="DpHasta" Width="150"/>
                 </StackPanel>
-                <Button Content="Generar liquidación" VerticalAlignment="Bottom" Height="26" Click="BtnGenerarLiquidacion_Click"/>
+                <Button Content="Generar liquidación" VerticalAlignment="Bottom" Click="BtnGenerarLiquidacion_Click"/>
             </StackPanel>
         </GroupBox>
 

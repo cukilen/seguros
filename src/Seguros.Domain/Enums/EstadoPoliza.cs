@@ -4,5 +4,6 @@ public enum EstadoPoliza
 {
     Vigente,
     Anulada,
-    Renovada
+    Renovada,
+    NoVigente
 }

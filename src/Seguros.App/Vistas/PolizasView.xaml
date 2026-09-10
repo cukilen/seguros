@@ -13,46 +13,46 @@
         <GroupBox Header="Nueva póliza" Grid.Row="0" Padding="8" Margin="0,0,0,8">
             <StackPanel Orientation="Horizontal">
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Asegurado"/>
+                    <TextBlock Text="Asegurado" Style="{StaticResource Etiqueta}"/>
                     <ComboBox x:Name="CmbAsegurado" Width="160" DisplayMemberPath="Nombre"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Compañía"/>
+                    <TextBlock Text="Compañía" Style="{StaticResource Etiqueta}"/>
                     <ComboBox x:Name="CmbCompania" Width="140" DisplayMemberPath="Nombre"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Ramo"/>
-                    <ComboBox x:Name="CmbRamo" Width="130"/>
+                    <TextBlock Text="Ramo" Style="{StaticResource Etiqueta}"/>
+                    <ComboBox x:Name="CmbRamo" Width="150" DisplayMemberPath="Nombre"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Número"/>
+                    <TextBlock Text="Número" Style="{StaticResource Etiqueta}"/>
                     <TextBox x:Name="TxtNumero" Width="90"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Desde"/>
-                    <DatePicker x:Name="DpDesde" Width="110"/>
+                    <TextBlock Text="Desde" Style="{StaticResource Etiqueta}"/>
+                    <DatePicker x:Name="DpDesde" Width="150"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Hasta"/>
-                    <DatePicker x:Name="DpHasta" Width="110"/>
+                    <TextBlock Text="Hasta" Style="{StaticResource Etiqueta}"/>
+                    <DatePicker x:Name="DpHasta" Width="150"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Prima"/>
+                    <TextBlock Text="Prima" Style="{StaticResource Etiqueta}"/>
                     <TextBox x:Name="TxtPrima" Width="80"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0" VerticalAlignment="Bottom">
-                    <CheckBox x:Name="ChkFlota" Content="Es flota"/>
+                    <CheckBox x:Name="ChkFlota" Content="Es flota" Margin="0,0,0,7"/>
                 </StackPanel>
-                <Button Content="Agregar" VerticalAlignment="Bottom" Height="26" Click="BtnAgregar_Click"/>
+                <Button Content="Agregar" VerticalAlignment="Bottom" Padding="14,7" Click="BtnAgregar_Click"/>
             </StackPanel>
         </GroupBox>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
             <TextBlock Text="Filtrar por ramo:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <ComboBox x:Name="CmbFiltroRamo" Width="150" SelectionChanged="Filtro_Changed" Margin="0,0,12,0"/>
+            <ComboBox x:Name="CmbFiltroRamo" Width="150" DisplayMemberPath="Nombre" SelectionChanged="Filtro_Changed" Margin="0,0,12,0"/>
             <TextBlock Text="Filtrar por compañía:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <ComboBox x:Name="CmbFiltroCompania" Width="150" DisplayMemberPath="Nombre" SelectionChanged="Filtro_Changed" Margin="0,0,12,0"/>
-            <Button Content="Limpiar filtros" Click="BtnLimpiarFiltros_Click"/>
+            <Button Content="Limpiar filtros" Style="{StaticResource BotonSecundario}" Click="BtnLimpiarFiltros_Click"/>
         </StackPanel>
 
         <DataGrid x:Name="Grid" Grid.Row="3" AutoGenerateColumns="False" IsReadOnly="True">
@@ -71,13 +71,25 @@
 
         <GroupBox Header="Acciones sobre la póliza seleccionada" Grid.Row="4" Padding="8" Margin="0,8,0,0">
             <StackPanel Orientation="Horizontal">
-                <TextBox x:Name="TxtMotivoAnulacion" Width="160" Margin="0,0,8,0" ToolTip="Motivo de anulación"/>
-                <Button Content="Anular" Click="BtnAnular_Click" Margin="0,0,16,0"/>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Motivo de anulación" Style="{StaticResource Etiqueta}"/>
+                    <TextBox x:Name="TxtMotivoAnulacion" Width="180"/>
+                </StackPanel>
+                <Button Content="Anular" Style="{StaticResource BotonPeligro}" VerticalAlignment="Bottom" Margin="0,0,24,0" Click="BtnAnular_Click"/>
 
-                <TextBox x:Name="TxtNuevoNumero" Width="90" Margin="0,0,4,0" ToolTip="Nuevo número"/>
-                <DatePicker x:Name="DpNuevaVigenciaHasta" Width="110" Margin="0,0,4,0"/>
-                <TextBox x:Name="TxtNuevaPrima" Width="70" Margin="0,0,8,0" ToolTip="Nueva prima"/>
-                <Button Content="Renovar" Click="BtnRenovar_Click"/>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Nuevo número" Style="{StaticResource Etiqueta}"/>
+                    <TextBox x:Name="TxtNuevoNumero" Width="100"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Nueva vigencia hasta" Style="{StaticResource Etiqueta}"/>
+                    <DatePicker x:Name="DpNuevaVigenciaHasta" Width="150"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Nueva prima" Style="{StaticResource Etiqueta}"/>
+                    <TextBox x:Name="TxtNuevaPrima" Width="80"/>
+                </StackPanel>
+                <Button Content="Renovar" VerticalAlignment="Bottom" Click="BtnRenovar_Click"/>
             </StackPanel>
         </GroupBox>
     </Grid>

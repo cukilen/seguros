@@ -8,11 +8,12 @@ public static class MapeoColumnas
 {
     private static readonly Dictionary<string, string[]> Alias = new()
     {
-        [CamposImportacion.Documento] = new[] { "documento", "dni", "cuit", "nrodocumento", "nrodoc" },
+        [CamposImportacion.TipoDocumento] = new[] { "tipodoc", "tipodocumento" },
+        [CamposImportacion.NroDocumento] = new[] { "nrodocumento", "nrodoc", "documento", "dni", "cuit" },
         [CamposImportacion.NombreAsegurado] = new[] { "asegurado", "nombreasegurado", "cliente", "nombre" },
         [CamposImportacion.Telefono] = new[] { "telefono", "tel", "celular" },
         [CamposImportacion.CompaniaNombre] = new[] { "compania", "aseguradora", "cia" },
-        [CamposImportacion.Ramo] = new[] { "ramo", "cobertura" },
+        [CamposImportacion.Ramo] = new[] { "ramo", "seccion" },
         [CamposImportacion.NumeroPoliza] = new[] { "nropoliza", "numeropoliza", "poliza", "nrpoliza" },
         [CamposImportacion.VigenciaDesde] = new[] { "vigenciadesde", "desde", "inicio", "fechadesde" },
         [CamposImportacion.VigenciaHasta] = new[] { "vigenciahasta", "hasta", "vencimiento", "fechahasta" },

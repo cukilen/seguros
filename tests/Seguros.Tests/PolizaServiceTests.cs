@@ -23,15 +23,15 @@ public class PolizaServiceTests : IDisposable
     private async Task Preparar()
     {
         var productor = await new ProductorService(_ctx.Db).AltaProductor("P", "p1", "clave");
-        var asegurado = await new AseguradoService(_ctx.Db).AltaAsegurado(productor.Id, "Cliente", "20111222");
-        var compania = await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { Ramo.Autos });
+        var asegurado = await new AseguradoService(_ctx.Db).AltaAsegurado(productor.Id, "Cliente", TipoDocumento.Dni, "20111222");
+        var compania = await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { _ctx.RamoAutosId });
         _productorId = productor.Id;
         _aseguradoId = asegurado.Id;
         _companiaId = compania.Id;
     }
 
     private Task<Domain.Entities.Poliza> CrearPoliza(string numero = "P-1", decimal prima = 1000m) =>
-        _service.AltaPoliza(_productorId, _aseguradoId, _companiaId, Ramo.Autos, numero,
+        _service.AltaPoliza(_productorId, _aseguradoId, _companiaId, _ctx.RamoAutosId, numero,
             DateOnly.FromDateTime(DateTime.Today), DateOnly.FromDateTime(DateTime.Today.AddYears(1)), prima);
 
     [Fact] // Alta exitosa
@@ -40,6 +40,20 @@ public class PolizaServiceTests : IDisposable
         var poliza = await CrearPoliza();
 
         Assert.Equal(EstadoPoliza.Vigente, poliza.Estado);
+    }
+
+    [Fact] // Alta con producto, premio y cobertura
+    public async Task AltaPoliza_conProductoPremioYCobertura_losGuarda()
+    {
+        var poliza = await _service.AltaPoliza(_productorId, _aseguradoId, _companiaId, _ctx.RamoAutosId, "P-9",
+            DateOnly.FromDateTime(DateTime.Today), DateOnly.FromDateTime(DateTime.Today.AddYears(1)), 1000m,
+            producto: "Clásico Trimestral", premio: 1300m, cobertura: "A -Responsabilidad Civil",
+            descripcionRiesgo: "Ford Fiesta 2019");
+
+        Assert.Equal("Clásico Trimestral", poliza.Producto);
+        Assert.Equal(1300m, poliza.Premio);
+        Assert.Equal("A -Responsabilidad Civil", poliza.Cobertura);
+        Assert.Equal("Ford Fiesta 2019", poliza.DescripcionRiesgo);
     }
 
     [Fact] // Número de póliza duplicado en la misma compañía
@@ -89,17 +103,29 @@ public class PolizaServiceTests : IDisposable
         Assert.Empty(vigentes);
     }
 
+    [Fact] // Póliza vencida sin gestión
+    public async Task MarcarComoNoVigente_dejaDeContarseComoVigenteSinQuedarAnulada()
+    {
+        var poliza = await CrearPoliza();
+
+        await _service.MarcarComoNoVigente(poliza.Id);
+
+        var actualizada = (await _service.Consultar(aseguradoId: _aseguradoId)).Single();
+        Assert.Equal(EstadoPoliza.NoVigente, actualizada.Estado);
+        Assert.NotEqual(EstadoPoliza.Anulada, actualizada.Estado);
+    }
+
     [Fact] // Filtrado por ramo
     public async Task Consultar_filtraPorRamo()
     {
         await CrearPoliza("P-1");
-        var companiaVida = await new CompaniaService(_ctx.Db).AltaCompania("Zurich", new[] { Ramo.Vida });
-        await _service.AltaPoliza(_productorId, _aseguradoId, companiaVida.Id, Ramo.Vida, "V-1",
+        var companiaVida = await new CompaniaService(_ctx.Db).AltaCompania("Zurich", new[] { _ctx.RamoVidaId });
+        await _service.AltaPoliza(_productorId, _aseguradoId, companiaVida.Id, _ctx.RamoVidaId, "V-1",
             DateOnly.FromDateTime(DateTime.Today), DateOnly.FromDateTime(DateTime.Today.AddYears(1)), 800m);
 
-        var soloAutos = await _service.Consultar(ramo: Ramo.Autos);
+        var soloAutos = await _service.Consultar(ramoId: _ctx.RamoAutosId);
 
-        Assert.All(soloAutos, p => Assert.Equal(Ramo.Autos, p.Ramo));
+        Assert.All(soloAutos, p => Assert.Equal(_ctx.RamoAutosId, p.RamoId));
     }
 
     public void Dispose() => _ctx.Dispose();

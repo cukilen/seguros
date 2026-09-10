@@ -18,18 +18,18 @@
         <GroupBox Header="Nuevo endoso" Grid.Row="1" Padding="8" Margin="0,0,0,8">
             <StackPanel Orientation="Horizontal">
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Fecha"/>
-                    <DatePicker x:Name="DpFecha" Width="120"/>
+                    <TextBlock Text="Fecha" Style="{StaticResource Etiqueta}"/>
+                    <DatePicker x:Name="DpFecha" Width="150"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Tipo"/>
+                    <TextBlock Text="Tipo" Style="{StaticResource Etiqueta}"/>
                     <TextBox x:Name="TxtTipo" Width="150"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,10,0">
-                    <TextBlock Text="Detalle"/>
+                    <TextBlock Text="Detalle" Style="{StaticResource Etiqueta}"/>
                     <TextBox x:Name="TxtDetalle" Width="260"/>
                 </StackPanel>
-                <Button Content="Agregar endoso" VerticalAlignment="Bottom" Height="26" Click="BtnAgregar_Click"/>
+                <Button Content="Agregar endoso" VerticalAlignment="Bottom" Click="BtnAgregar_Click"/>
             </StackPanel>
         </GroupBox>
 
@@ -39,13 +39,18 @@
                 <DataGridTextColumn Header="Fecha" Binding="{Binding Fecha}" Width="100"/>
                 <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" Width="150"/>
                 <DataGridTextColumn Header="Detalle" Binding="{Binding Detalle}" Width="300"/>
-                <DataGridCheckBoxColumn Header="Anulado" Binding="{Binding Anulado}" Width="70"/>
+                <DataGridCheckBoxColumn Header="Anulado" Binding="{Binding Anulado, Mode=OneWay}" IsReadOnly="True" Width="70"/>
             </DataGrid.Columns>
         </DataGrid>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
-            <TextBox x:Name="TxtMotivoAnulacion" Width="200" Margin="0,0,8,0" ToolTip="Motivo de anulación del endoso"/>
-            <Button Content="Anular endoso seleccionado" Click="BtnAnular_Click"/>
-        </StackPanel>
+        <GroupBox Header="Anular endoso seleccionado" Grid.Row="3" Padding="8" Margin="0,8,0,0">
+            <StackPanel Orientation="Horizontal">
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Motivo de anulación" Style="{StaticResource Etiqueta}"/>
+                    <TextBox x:Name="TxtMotivoAnulacion" Width="220"/>
+                </StackPanel>
+                <Button Content="Anular endoso" Style="{StaticResource BotonPeligro}" VerticalAlignment="Bottom" Click="BtnAnular_Click"/>
+            </StackPanel>
+        </GroupBox>
     </Grid>
 </UserControl>

@@ -12,17 +12,26 @@ public class AseguradoService
 
     public AseguradoService(SegurosDbContext db) => _db = db;
 
-    public async Task<Asegurado> AltaAsegurado(int productorId, string nombre, string documento, string? telefono = null, string? email = null, string? domicilio = null)
+    public async Task<Asegurado> AltaAsegurado(int productorId, string nombre, TipoDocumento? tipoDocumento = null,
+        string? nroDocumento = null, string? telefono = null, string? email = null, string? domicilio = null)
     {
-        var yaExiste = await _db.Asegurados.AnyAsync(a => a.ProductorId == productorId && a.Documento == documento);
-        if (yaExiste)
-            throw new ReglaDeNegocioException($"Ya existe un asegurado con el documento '{documento}' para este productor.");
+        if (tipoDocumento is null != string.IsNullOrWhiteSpace(nroDocumento))
+            throw new ReglaDeNegocioException("Indicá tipo y número de documento juntos, o dejá ambos vacíos.");
+
+        if (tipoDocumento is not null)
+        {
+            var yaExiste = await _db.Asegurados.AnyAsync(a =>
+                a.ProductorId == productorId && a.TipoDocumento == tipoDocumento && a.NroDocumento == nroDocumento);
+            if (yaExiste)
+                throw new ReglaDeNegocioException($"Ya existe un asegurado con el documento '{nroDocumento}' para este productor.");
+        }
 
         var asegurado = new Asegurado
         {
             ProductorId = productorId,
             Nombre = nombre,
-            Documento = documento,
+            TipoDocumento = tipoDocumento,
+            NroDocumento = string.IsNullOrWhiteSpace(nroDocumento) ? null : nroDocumento,
             Telefono = telefono,
             Email = email,
             Domicilio = domicilio,
@@ -48,6 +57,7 @@ public class AseguradoService
     public async Task<List<Poliza>> ObtenerPolizasDeAsegurado(int aseguradoId) =>
         await _db.Polizas
             .Include(p => p.Compania)
+            .Include(p => p.Ramo)
             .Where(p => p.AseguradoId == aseguradoId)
             .OrderByDescending(p => p.VigenciaDesde)
             .ToListAsync();
@@ -57,7 +67,7 @@ public class AseguradoService
         texto = texto.Trim();
         return await _db.Asegurados
             .Where(a => a.ProductorId == productorId &&
-                        (a.Nombre.Contains(texto) || a.Documento.Contains(texto)))
+                        (a.Nombre.Contains(texto) || (a.NroDocumento != null && a.NroDocumento.Contains(texto))))
             .ToListAsync();
     }
 

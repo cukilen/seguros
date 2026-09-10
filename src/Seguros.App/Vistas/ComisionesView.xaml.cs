@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using Seguros.Domain.Entities;
-using Seguros.Domain.Enums;
 
 namespace Seguros.App.Vistas;
 
@@ -14,11 +13,11 @@ public partial class ComisionesView : UserControl
     public ComisionesView()
     {
         InitializeComponent();
-        CmbRamo.ItemsSource = Enum.GetValues<Ramo>();
         Grid.ItemsSource = _filas;
         Loaded += async (_, _) =>
         {
             CmbCompania.ItemsSource = await AppServices.Companias.ListarCompanias();
+            CmbRamo.ItemsSource = await AppServices.Ramos.Listar();
             await Recargar();
         };
     }
@@ -34,32 +33,36 @@ public partial class ComisionesView : UserControl
     {
         if (CmbCompania.SelectedItem is not Compania compania || CmbRamo.SelectedItem is not Ramo ramo)
         {
-            MessageBox.Show("Elegí compañía y ramo.", "Datos incompletos", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error("Elegí compañía y ramo.", "Faltan datos");
             return;
         }
 
         if (!decimal.TryParse(TxtPorcentaje.Text.Trim(), NumberStyles.Number, CultureInfo.GetCultureInfo("es-AR"), out var porcentaje))
         {
-            MessageBox.Show("El porcentaje ingresado no es válido.", "Datos incompletos", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error("El porcentaje ingresado no es válido.", "Dato inválido");
             return;
         }
 
-        await AppServices.Comisiones.ConfigurarComision(compania.Id, ramo, porcentaje);
-        MessageBox.Show("Porcentaje de comisión guardado.", "Listo", MessageBoxButton.OK, MessageBoxImage.Information);
+        await AppServices.Comisiones.ConfigurarComision(compania.Id, ramo.Id, porcentaje);
+        Dialogos.Info("Porcentaje de comisión guardado.");
     }
 
     private async void BtnGenerarLiquidacion_Click(object sender, RoutedEventArgs e)
     {
         if (DpDesde.SelectedDate is null || DpHasta.SelectedDate is null)
         {
-            MessageBox.Show("Elegí el período (desde/hasta).", "Datos incompletos", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error("Elegí el período (desde/hasta).", "Faltan datos");
             return;
         }
 
-        var liquidacion = await AppServices.Comisiones.GenerarLiquidacion(AppServices.ProductorActual.Id,
-            DateOnly.FromDateTime(DpDesde.SelectedDate.Value), DateOnly.FromDateTime(DpHasta.SelectedDate.Value));
+        var desde = DateOnly.FromDateTime(DpDesde.SelectedDate.Value);
+        var hasta = DateOnly.FromDateTime(DpHasta.SelectedDate.Value);
+        if (!Dialogos.Confirmar($"¿Generar la liquidación del período {desde:dd/MM/yyyy} al {hasta:dd/MM/yyyy}? Si ya generaste una liquidación para este período, se creará una nueva de todos modos.", "Confirmar liquidación"))
+            return;
+
+        var liquidacion = await AppServices.Comisiones.GenerarLiquidacion(AppServices.ProductorActual.Id, desde, hasta);
 
         await Recargar();
-        MessageBox.Show($"Liquidación generada por un total de {liquidacion.MontoTotal:C}.", "Listo", MessageBoxButton.OK, MessageBoxImage.Information);
+        Dialogos.Info($"Liquidación generada por un total de {liquidacion.MontoTotal:C}.");
     }
 }

@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Seguros.Domain.Entities;
 using Seguros.Domain.Enums;
@@ -23,18 +22,30 @@ public class ImportacionService
     /// Aplica el mapeo de columnas a cada fila cruda y marca posibles duplicados y errores,
     /// para que el productor los revise antes de confirmar la importación.
     /// </summary>
+    /// <param name="companiaIdPorDefecto">
+    /// Compañía a usar en filas donde el mapeo no incluye una columna de compañía
+    /// (specs/importacion-datos - Determinación de la compañía al importar).
+    /// </param>
     public async Task<List<ItemImportacion>> GenerarVistaPrevia(
         List<Dictionary<string, string>> filasCrudas,
         Dictionary<string, string> mapeoColumnaACampo,
-        int productorId)
+        int productorId,
+        int? companiaIdPorDefecto = null)
     {
+        string? nombreCompaniaPorDefecto = null;
+        if (companiaIdPorDefecto is not null)
+        {
+            var compania = await _db.Companias.FindAsync(companiaIdPorDefecto.Value);
+            nombreCompaniaPorDefecto = compania?.Nombre;
+        }
+
         var items = new List<ItemImportacion>();
         var numero = 0;
 
         foreach (var fila in filasCrudas)
         {
             numero++;
-            var item = new ItemImportacion { NumeroFila = numero };
+            var item = new ItemImportacion { NumeroFila = numero, CompaniaNombre = nombreCompaniaPorDefecto };
 
             foreach (var (columna, campo) in mapeoColumnaACampo)
             {
@@ -42,7 +53,8 @@ public class ImportacionService
 
                 switch (campo)
                 {
-                    case CamposImportacion.Documento: item.Documento = valor; break;
+                    case CamposImportacion.TipoDocumento: item.TipoDocumentoTexto = valor; break;
+                    case CamposImportacion.NroDocumento: item.NroDocumento = valor; break;
                     case CamposImportacion.NombreAsegurado: item.NombreAsegurado = valor; break;
                     case CamposImportacion.Telefono: item.Telefono = valor; break;
                     case CamposImportacion.CompaniaNombre: item.CompaniaNombre = valor; break;
@@ -57,13 +69,7 @@ public class ImportacionService
             item.ErrorDeteccion = ValidarCamposMinimos(item);
 
             if (!item.TieneError)
-            {
-                var documentoDuplicado = await _db.Asegurados
-                    .AnyAsync(a => a.ProductorId == productorId && a.Documento == item.Documento);
-                var polizaDuplicada = await _db.Polizas
-                    .AnyAsync(p => p.Numero == item.NumeroPoliza);
-                item.EsPosibleDuplicado = documentoDuplicado || polizaDuplicada;
-            }
+                item.EsPosibleDuplicado = await EsPosibleDuplicado(productorId, item);
 
             items.Add(item);
         }
@@ -71,45 +77,51 @@ public class ImportacionService
         return items;
     }
 
+    private async Task<bool> EsPosibleDuplicado(int productorId, ItemImportacion item)
+    {
+        var polizaDuplicada = await _db.Polizas.AnyAsync(p => p.Numero == item.NumeroPoliza);
+        if (polizaDuplicada) return true;
+
+        if (!string.IsNullOrWhiteSpace(item.NroDocumento))
+        {
+            var tipoDoc = ParsearTipoDocumento(item.TipoDocumentoTexto) ?? TipoDocumento.Dni;
+            return await _db.Asegurados.AnyAsync(a =>
+                a.ProductorId == productorId && a.TipoDocumento == tipoDoc && a.NroDocumento == item.NroDocumento);
+        }
+
+        // Sin documento: la única señal posible es el nombre (limitación conocida, ver design.md).
+        return await _db.Asegurados.AnyAsync(a =>
+            a.ProductorId == productorId && a.Nombre.ToLower() == item.NombreAsegurado!.ToLower());
+    }
+
     private static string? ValidarCamposMinimos(ItemImportacion item)
     {
-        if (string.IsNullOrWhiteSpace(item.Documento)) return "Falta el documento del asegurado.";
         if (string.IsNullOrWhiteSpace(item.NombreAsegurado)) return "Falta el nombre del asegurado.";
         if (string.IsNullOrWhiteSpace(item.CompaniaNombre)) return "Falta el nombre de la compañía.";
         if (string.IsNullOrWhiteSpace(item.NumeroPoliza)) return "Falta el número de póliza.";
-        if (!TryParseRamo(item.RamoTexto, out _)) return $"Ramo no reconocido: '{item.RamoTexto}'.";
-        if (!DateOnly.TryParse(item.VigenciaDesdeTexto, CultureInfo.GetCultureInfo("es-AR"), DateTimeStyles.None, out _))
+        if (string.IsNullOrWhiteSpace(item.RamoTexto)) return "Falta el ramo.";
+        if (!ParseoImportacion.TryParseFecha(item.VigenciaDesdeTexto, out _))
             return $"Fecha de inicio de vigencia inválida: '{item.VigenciaDesdeTexto}'.";
-        if (!DateOnly.TryParse(item.VigenciaHastaTexto, CultureInfo.GetCultureInfo("es-AR"), DateTimeStyles.None, out _))
+        if (!ParseoImportacion.TryParseFecha(item.VigenciaHastaTexto, out _))
             return $"Fecha de fin de vigencia inválida: '{item.VigenciaHastaTexto}'.";
-        if (!decimal.TryParse(item.PrimaTexto, NumberStyles.Number, CultureInfo.GetCultureInfo("es-AR"), out _))
+        if (!ParseoImportacion.TryParseMonto(item.PrimaTexto, out _))
             return $"Prima inválida: '{item.PrimaTexto}'.";
 
         return null;
     }
 
-    private static readonly Dictionary<string, Ramo> AliasRamo = new()
+    private static readonly Dictionary<string, TipoDocumento> AliasTipoDocumento = new()
     {
-        ["vida"] = Ramo.Vida,
-        ["incendio"] = Ramo.Incendio,
-        ["rc"] = Ramo.ResponsabilidadCivil,
-        ["responsabilidadcivil"] = Ramo.ResponsabilidadCivil,
-        ["responsabilidad civil"] = Ramo.ResponsabilidadCivil,
-        ["auto"] = Ramo.Autos,
-        ["autos"] = Ramo.Autos,
-        ["combinadofamiliar"] = Ramo.CombinadoFamiliar,
-        ["combinado familiar"] = Ramo.CombinadoFamiliar,
-        ["accidentespersonales"] = Ramo.AccidentesPersonales,
-        ["accidentes personales"] = Ramo.AccidentesPersonales,
-        ["ap"] = Ramo.AccidentesPersonales,
+        ["dni"] = TipoDocumento.Dni,
+        ["cuit"] = TipoDocumento.Cuit,
+        ["le"] = TipoDocumento.Le,
     };
 
-    private static bool TryParseRamo(string? texto, out Ramo ramo)
-    {
-        ramo = default;
-        if (string.IsNullOrWhiteSpace(texto)) return false;
-        return AliasRamo.TryGetValue(texto.Trim().ToLowerInvariant(), out ramo);
-    }
+    /// <summary>Null si no hay texto o no se reconoce (se usa Dni como default al importar).</summary>
+    private static TipoDocumento? ParsearTipoDocumento(string? texto) =>
+        !string.IsNullOrWhiteSpace(texto) && AliasTipoDocumento.TryGetValue(texto.Trim().ToLowerInvariant(), out var tipo)
+            ? tipo
+            : null;
 
     /// <summary>
     /// Importa los items seleccionados con acción Importar/Actualizar (Omitir se ignora).
@@ -142,27 +154,50 @@ public class ImportacionService
         return resultado;
     }
 
+    private async Task<Ramo> ObtenerOCrearRamo(string nombreRamo)
+    {
+        var ramo = await _db.Ramos.FirstOrDefaultAsync(r => r.Nombre.ToLower() == nombreRamo.Trim().ToLower());
+        if (ramo is not null) return ramo;
+
+        ramo = new Ramo { Nombre = nombreRamo.Trim() };
+        _db.Ramos.Add(ramo);
+        await _db.SaveChangesAsync();
+        return ramo;
+    }
+
     private async Task ImportarFila(int productorId, ItemImportacion item)
     {
         var compania = await _db.Companias
             .FirstOrDefaultAsync(c => c.Nombre.ToLower() == item.CompaniaNombre!.ToLower())
             ?? throw new InvalidOperationException($"Compañía '{item.CompaniaNombre}' no está registrada.");
 
-        TryParseRamo(item.RamoTexto, out var ramo);
-        var cultura = CultureInfo.GetCultureInfo("es-AR");
-        var vigenciaDesde = DateOnly.Parse(item.VigenciaDesdeTexto!, cultura);
-        var vigenciaHasta = DateOnly.Parse(item.VigenciaHastaTexto!, cultura);
-        var prima = decimal.Parse(item.PrimaTexto!, NumberStyles.Number, cultura);
+        var ramo = await ObtenerOCrearRamo(item.RamoTexto!);
+        ParseoImportacion.TryParseFecha(item.VigenciaDesdeTexto, out var vigenciaDesde);
+        ParseoImportacion.TryParseFecha(item.VigenciaHastaTexto, out var vigenciaHasta);
+        ParseoImportacion.TryParseMonto(item.PrimaTexto, out var prima);
 
-        var asegurado = await _db.Asegurados
-            .FirstOrDefaultAsync(a => a.ProductorId == productorId && a.Documento == item.Documento);
+        Asegurado? asegurado = null;
+        var tieneDocumento = !string.IsNullOrWhiteSpace(item.NroDocumento);
+        var tipoDocumento = ParsearTipoDocumento(item.TipoDocumentoTexto) ?? TipoDocumento.Dni;
+
+        if (tieneDocumento)
+        {
+            asegurado = await _db.Asegurados.FirstOrDefaultAsync(a =>
+                a.ProductorId == productorId && a.TipoDocumento == tipoDocumento && a.NroDocumento == item.NroDocumento);
+        }
+        else
+        {
+            asegurado = await _db.Asegurados.FirstOrDefaultAsync(a =>
+                a.ProductorId == productorId && a.Nombre.ToLower() == item.NombreAsegurado!.ToLower());
+        }
 
         if (asegurado is null)
         {
             asegurado = new Asegurado
             {
                 ProductorId = productorId,
-                Documento = item.Documento!,
+                TipoDocumento = tieneDocumento ? tipoDocumento : null,
+                NroDocumento = tieneDocumento ? item.NroDocumento : null,
                 Nombre = item.NombreAsegurado!,
                 Telefono = item.Telefono
             };
@@ -178,7 +213,7 @@ public class ImportacionService
                 ProductorId = productorId,
                 AseguradoId = asegurado.Id,
                 CompaniaId = compania.Id,
-                Ramo = ramo,
+                RamoId = ramo.Id,
                 Numero = item.NumeroPoliza!,
                 VigenciaDesde = vigenciaDesde,
                 VigenciaHasta = vigenciaHasta,

@@ -1,5 +1,3 @@
-using Seguros.Domain.Enums;
-
 namespace Seguros.Domain.Entities;
 
 public class Compania
@@ -20,7 +18,9 @@ public class CompaniaRamo
     public int Id { get; set; }
     public int CompaniaId { get; set; }
     public Compania Compania { get; set; } = null!;
-    public Ramo Ramo { get; set; }
+
+    public int RamoId { get; set; }
+    public Ramo Ramo { get; set; } = null!;
 
     /// <summary>Null = todavía no se pactó comisión para esta combinación compañía/ramo.</summary>
     public decimal? PorcentajeComision { get; set; }

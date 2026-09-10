@@ -2,7 +2,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Seguros.Data;
 using Seguros.Data.Services;
-using Seguros.Domain.Enums;
 using Xunit;
 
 namespace Seguros.Tests;
@@ -23,7 +22,8 @@ public class BackupServiceTests
             await using (var db = new SegurosDbContext(options))
             {
                 await db.Database.EnsureCreatedAsync();
-                await new CompaniaService(db).AltaCompania("La Segunda", new[] { Ramo.Autos });
+                var ramoAutosId = db.Ramos.Single(r => r.Nombre == "Autos").Id;
+                await new CompaniaService(db).AltaCompania("La Segunda", new[] { ramoAutosId });
             }
 
             new BackupService(cadenaOrigen).HacerBackup(rutaDestino);

@@ -14,9 +14,9 @@ public class RelacionesTests : IDisposable
     public async Task RelacionesClave_sePuedenCrearYConsultar()
     {
         var productor = await new ProductorService(_ctx.Db).AltaProductor("P", "p1", "clave");
-        var asegurado = await new AseguradoService(_ctx.Db).AltaAsegurado(productor.Id, "Cliente", "20111222");
-        var compania = await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { Ramo.Autos });
-        var poliza = await new PolizaService(_ctx.Db).AltaPoliza(productor.Id, asegurado.Id, compania.Id, Ramo.Autos,
+        var asegurado = await new AseguradoService(_ctx.Db).AltaAsegurado(productor.Id, "Cliente", TipoDocumento.Dni, "20111222");
+        var compania = await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { _ctx.RamoAutosId });
+        var poliza = await new PolizaService(_ctx.Db).AltaPoliza(productor.Id, asegurado.Id, compania.Id, _ctx.RamoAutosId,
             "P-1", DateOnly.FromDateTime(DateTime.Today), DateOnly.FromDateTime(DateTime.Today.AddYears(1)), 1000m);
         await new FlotaService(_ctx.Db).MarcarComoFlota(poliza.Id);
         var unidad = await new FlotaService(_ctx.Db).AltaUnidad(poliza.Id, "AB123CD", "Ford", "Transit", "Carga");

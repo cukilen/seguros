@@ -3,7 +3,8 @@ namespace Seguros.Data.Importacion;
 /// <summary>Campos del sistema a los que se puede mapear una columna del archivo importado.</summary>
 public static class CamposImportacion
 {
-    public const string Documento = "Documento";
+    public const string TipoDocumento = "TipoDocumento";
+    public const string NroDocumento = "NroDocumento";
     public const string NombreAsegurado = "NombreAsegurado";
     public const string Telefono = "Telefono";
     public const string CompaniaNombre = "CompaniaNombre";
@@ -15,7 +16,7 @@ public static class CamposImportacion
 
     public static readonly string[] Todos =
     {
-        Documento, NombreAsegurado, Telefono, CompaniaNombre, Ramo,
+        TipoDocumento, NroDocumento, NombreAsegurado, Telefono, CompaniaNombre, Ramo,
         NumeroPoliza, VigenciaDesde, VigenciaHasta, Prima
     };
 }
@@ -32,7 +33,10 @@ public class ItemImportacion
 {
     public int NumeroFila { get; set; }
 
-    public string? Documento { get; set; }
+    /// <summary>El documento es opcional: no todas las fuentes lo proveen (specs/asegurados).</summary>
+    public string? TipoDocumentoTexto { get; set; }
+    public string? NroDocumento { get; set; }
+
     public string? NombreAsegurado { get; set; }
     public string? Telefono { get; set; }
     public string? CompaniaNombre { get; set; }
@@ -42,7 +46,7 @@ public class ItemImportacion
     public string? VigenciaHastaTexto { get; set; }
     public string? PrimaTexto { get; set; }
 
-    /// <summary>Ya existe un asegurado con este documento o una póliza con este número.</summary>
+    /// <summary>Ya existe un asegurado con este documento (o el mismo nombre, si no hay documento) o una póliza con este número.</summary>
     public bool EsPosibleDuplicado { get; set; }
 
     /// <summary>Motivo por el que la fila no se puede importar tal cual (dato faltante o inválido).</summary>

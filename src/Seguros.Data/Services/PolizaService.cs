@@ -12,24 +12,32 @@ public class PolizaService
 
     public PolizaService(SegurosDbContext db) => _db = db;
 
-    public async Task<Poliza> AltaPoliza(int productorId, int aseguradoId, int companiaId, Ramo ramo,
-        string numero, DateOnly vigenciaDesde, DateOnly vigenciaHasta, decimal prima, bool esFlota = false)
+    public async Task<Poliza> AltaPoliza(int productorId, int aseguradoId, int companiaId, int ramoId,
+        string numero, DateOnly vigenciaDesde, DateOnly vigenciaHasta, decimal prima, bool esFlota = false,
+        string? producto = null, decimal? premio = null, string? cobertura = null, string? descripcionRiesgo = null)
     {
         var numeroDuplicado = await _db.Polizas.AnyAsync(p => p.CompaniaId == companiaId && p.Numero == numero);
         if (numeroDuplicado)
             throw new ReglaDeNegocioException($"El número de póliza '{numero}' ya está en uso para esta compañía.");
+
+        var ramo = await _db.Ramos.FindAsync(ramoId)
+            ?? throw new ReglaDeNegocioException("Ramo no encontrado.");
 
         var poliza = new Poliza
         {
             ProductorId = productorId,
             AseguradoId = aseguradoId,
             CompaniaId = companiaId,
-            Ramo = ramo,
+            RamoId = ramoId,
             Numero = numero,
             VigenciaDesde = vigenciaDesde,
             VigenciaHasta = vigenciaHasta,
             Prima = prima,
-            EsFlota = esFlota && ramo == Ramo.Autos,
+            Producto = producto,
+            Premio = premio,
+            Cobertura = cobertura,
+            DescripcionRiesgo = esFlota ? null : descripcionRiesgo,
+            EsFlota = esFlota && EsRamoAutos(ramo),
             Estado = EstadoPoliza.Vigente
         };
 
@@ -38,11 +46,16 @@ public class PolizaService
         return poliza;
     }
 
-    public async Task EditarPoliza(int polizaId, decimal prima, DateOnly vigenciaHasta)
+    public async Task EditarPoliza(int polizaId, decimal prima, DateOnly vigenciaHasta,
+        string? producto = null, decimal? premio = null, string? cobertura = null, string? descripcionRiesgo = null)
     {
         var poliza = await ObtenerVigenteOFallar(polizaId);
         poliza.Prima = prima;
         poliza.VigenciaHasta = vigenciaHasta;
+        poliza.Producto = producto;
+        poliza.Premio = premio;
+        poliza.Cobertura = cobertura;
+        if (!poliza.EsFlota) poliza.DescripcionRiesgo = descripcionRiesgo;
         await _db.SaveChangesAsync();
     }
 
@@ -60,11 +73,15 @@ public class PolizaService
             ProductorId = original.ProductorId,
             AseguradoId = original.AseguradoId,
             CompaniaId = original.CompaniaId,
-            Ramo = original.Ramo,
+            RamoId = original.RamoId,
             Numero = nuevoNumero,
             VigenciaDesde = nuevaVigenciaDesde,
             VigenciaHasta = nuevaVigenciaHasta,
             Prima = nuevaPrima,
+            Producto = original.Producto,
+            Premio = original.Premio,
+            Cobertura = original.Cobertura,
+            DescripcionRiesgo = original.DescripcionRiesgo,
             EsFlota = original.EsFlota,
             Estado = EstadoPoliza.Vigente,
             PolizaOrigenId = original.Id
@@ -87,13 +104,26 @@ public class PolizaService
         await _db.SaveChangesAsync();
     }
 
-    public async Task<List<Poliza>> Consultar(int? aseguradoId = null, int? companiaId = null, Ramo? ramo = null)
+    /// <summary>Marca una póliza vigente vencida sin gestión como no vigente (distinto de anulada).</summary>
+    public async Task MarcarComoNoVigente(int polizaId)
     {
-        var query = _db.Polizas.Include(p => p.Compania).Include(p => p.Asegurado).AsQueryable();
+        var poliza = await _db.Polizas.FindAsync(polizaId)
+            ?? throw new ReglaDeNegocioException("Póliza no encontrada.");
+        if (poliza.Estado != EstadoPoliza.Vigente)
+            throw new ReglaDeNegocioException("Solo una póliza vigente puede marcarse como no vigente.");
+
+        poliza.Estado = EstadoPoliza.NoVigente;
+        poliza.VencimientoGestionado = true;
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<List<Poliza>> Consultar(int? aseguradoId = null, int? companiaId = null, int? ramoId = null)
+    {
+        var query = _db.Polizas.Include(p => p.Compania).Include(p => p.Asegurado).Include(p => p.Ramo).AsQueryable();
 
         if (aseguradoId is not null) query = query.Where(p => p.AseguradoId == aseguradoId);
         if (companiaId is not null) query = query.Where(p => p.CompaniaId == companiaId);
-        if (ramo is not null) query = query.Where(p => p.Ramo == ramo);
+        if (ramoId is not null) query = query.Where(p => p.RamoId == ramoId);
 
         return await query.OrderByDescending(p => p.VigenciaDesde).ToListAsync();
     }
@@ -106,4 +136,6 @@ public class PolizaService
             throw new ReglaDeNegocioException("La póliza está anulada y no admite esta operación.");
         return poliza;
     }
+
+    public static bool EsRamoAutos(Ramo ramo) => ramo.Nombre.Equals("Autos", StringComparison.OrdinalIgnoreCase);
 }

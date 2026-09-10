@@ -18,6 +18,7 @@ public partial class ImportacionView : UserControl
     {
         InitializeComponent();
         Grid.ItemsSource = _filas;
+        Loaded += async (_, _) => CmbCompaniaPorDefecto.ItemsSource = await AppServices.Companias.ListarCompanias();
     }
 
     private void BtnElegirArchivo_Click(object sender, RoutedEventArgs e)
@@ -75,7 +76,20 @@ public partial class ImportacionView : UserControl
             .Where(f => f.CampoSeleccionado != NoImportar)
             .ToDictionary(f => f.Columna, f => f.CampoSeleccionado!);
 
-        var preview = await AppServices.Importacion.GenerarVistaPrevia(_filasCrudas, mapeo, AppServices.ProductorActual.Id);
+        var tieneColumnaCompania = mapeo.Values.Contains(CamposImportacion.CompaniaNombre);
+        int? companiaIdPorDefecto = null;
+
+        if (!tieneColumnaCompania)
+        {
+            if (CmbCompaniaPorDefecto.SelectedItem is not Seguros.Domain.Entities.Compania compania)
+            {
+                Dialogos.Error("Este archivo no trae una columna de compañía: elegí una compañía para aplicarla a todas las filas.", "Falta la compañía");
+                return;
+            }
+            companiaIdPorDefecto = compania.Id;
+        }
+
+        var preview = await AppServices.Importacion.GenerarVistaPrevia(_filasCrudas, mapeo, AppServices.ProductorActual.Id, companiaIdPorDefecto);
 
         _filas.Clear();
         foreach (var item in preview)
@@ -84,16 +98,24 @@ public partial class ImportacionView : UserControl
 
     private async void BtnConfirmar_Click(object sender, RoutedEventArgs e)
     {
-        if (_filas.Count == 0) return;
+        if (_filas.Count == 0)
+        {
+            Dialogos.Error("No hay filas para importar. Elegí un archivo y generá la vista previa primero.", "Nada para importar");
+            return;
+        }
+
+        var aImportar = _filas.Count(f => f.Accion != AccionImportacion.Omitir);
+        if (!Dialogos.Confirmar($"¿Confirmar la importación de {aImportar} fila(s)? Se van a crear o actualizar asegurados y pólizas en el sistema.", "Confirmar importación"))
+            return;
 
         var seleccion = _filas.Select(f => (f.Item, f.Accion));
         var resultado = await AppServices.Importacion.ConfirmarImportacion(AppServices.ProductorActual.Id, seleccion);
 
         var detalle = string.Join(Environment.NewLine, resultado.Errores);
-        MessageBox.Show(
+        Dialogos.Info(
             $"Importados: {resultado.Importados}{Environment.NewLine}Con error: {resultado.ConError}" +
             (resultado.Errores.Count > 0 ? $"{Environment.NewLine}{Environment.NewLine}{detalle}" : ""),
-            "Resultado de la importación", MessageBoxButton.OK, MessageBoxImage.Information);
+            "Resultado de la importación");
     }
 
     private class ColumnaMapeoFila

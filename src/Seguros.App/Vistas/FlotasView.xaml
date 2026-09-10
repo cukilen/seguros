@@ -45,13 +45,13 @@
                 <DataGridTextColumn Header="Marca" Binding="{Binding Marca}" Width="120"/>
                 <DataGridTextColumn Header="Modelo" Binding="{Binding Modelo}" Width="120"/>
                 <DataGridTextColumn Header="Uso" Binding="{Binding Uso}" Width="120"/>
-                <DataGridCheckBoxColumn Header="Activa" Binding="{Binding Activa}" Width="60"/>
+                <DataGridCheckBoxColumn Header="Activa" Binding="{Binding Activa, Mode=OneWay}" IsReadOnly="True" Width="60"/>
                 <DataGridTextColumn Header="Fecha baja" Binding="{Binding FechaBaja}" Width="100"/>
             </DataGrid.Columns>
         </DataGrid>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
-            <Button Content="Dar de baja unidad seleccionada" Click="BtnBajaUnidad_Click"/>
+            <Button Content="Dar de baja unidad seleccionada" Style="{StaticResource BotonPeligro}" Click="BtnBajaUnidad_Click"/>
         </StackPanel>
     </Grid>
 </UserControl>

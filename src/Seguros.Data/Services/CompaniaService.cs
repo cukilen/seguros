@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Seguros.Domain.Entities;
-using Seguros.Domain.Enums;
 using Seguros.Domain.Exceptions;
 
 namespace Seguros.Data.Services;
@@ -12,7 +11,7 @@ public class CompaniaService
 
     public CompaniaService(SegurosDbContext db) => _db = db;
 
-    public async Task<Compania> AltaCompania(string nombre, IEnumerable<Ramo> ramosOperados, string? telefono = null, string? email = null)
+    public async Task<Compania> AltaCompania(string nombre, IEnumerable<int> ramoIds, string? telefono = null, string? email = null)
     {
         if (string.IsNullOrWhiteSpace(nombre))
             throw new ReglaDeNegocioException("El nombre de la compañía es obligatorio.");
@@ -25,8 +24,8 @@ public class CompaniaService
             Activa = true
         };
 
-        foreach (var ramo in ramosOperados.Distinct())
-            compania.RamosOperados.Add(new CompaniaRamo { Ramo = ramo });
+        foreach (var ramoId in ramoIds.Distinct())
+            compania.RamosOperados.Add(new CompaniaRamo { RamoId = ramoId });
 
         _db.Companias.Add(compania);
         await _db.SaveChangesAsync();
@@ -43,7 +42,7 @@ public class CompaniaService
     }
 
     public async Task<List<Compania>> ListarCompanias() =>
-        await _db.Companias.Include(c => c.RamosOperados).ToListAsync();
+        await _db.Companias.Include(c => c.RamosOperados).ThenInclude(cr => cr.Ramo).ToListAsync();
 
     public async Task InactivarCompania(int companiaId)
     {

@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace Seguros.Data.Migrations
 {
     /// <inheritdoc />
@@ -44,24 +46,16 @@ namespace Seguros.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "CompaniaRamos",
+                name: "Ramos",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    CompaniaId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Ramo = table.Column<int>(type: "INTEGER", nullable: false),
-                    PorcentajeComision = table.Column<decimal>(type: "decimal(5,2)", nullable: true)
+                    Nombre = table.Column<string>(type: "TEXT", nullable: false, collation: "NOCASE")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_CompaniaRamos", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_CompaniaRamos_Companias_CompaniaId",
-                        column: x => x.CompaniaId,
-                        principalTable: "Companias",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                    table.PrimaryKey("PK_Ramos", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -72,7 +66,8 @@ namespace Seguros.Data.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     ProductorId = table.Column<int>(type: "INTEGER", nullable: false),
                     Nombre = table.Column<string>(type: "TEXT", nullable: false),
-                    Documento = table.Column<string>(type: "TEXT", nullable: false),
+                    TipoDocumento = table.Column<int>(type: "INTEGER", nullable: true),
+                    NroDocumento = table.Column<string>(type: "TEXT", nullable: true),
                     Telefono = table.Column<string>(type: "TEXT", nullable: true),
                     Email = table.Column<string>(type: "TEXT", nullable: true),
                     Domicilio = table.Column<string>(type: "TEXT", nullable: true),
@@ -113,6 +108,33 @@ namespace Seguros.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "CompaniaRamos",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    CompaniaId = table.Column<int>(type: "INTEGER", nullable: false),
+                    RamoId = table.Column<int>(type: "INTEGER", nullable: false),
+                    PorcentajeComision = table.Column<decimal>(type: "decimal(5,2)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CompaniaRamos", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CompaniaRamos_Companias_CompaniaId",
+                        column: x => x.CompaniaId,
+                        principalTable: "Companias",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CompaniaRamos_Ramos_RamoId",
+                        column: x => x.RamoId,
+                        principalTable: "Ramos",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Polizas",
                 columns: table => new
                 {
@@ -121,11 +143,15 @@ namespace Seguros.Data.Migrations
                     ProductorId = table.Column<int>(type: "INTEGER", nullable: false),
                     AseguradoId = table.Column<int>(type: "INTEGER", nullable: false),
                     CompaniaId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Ramo = table.Column<int>(type: "INTEGER", nullable: false),
+                    RamoId = table.Column<int>(type: "INTEGER", nullable: false),
                     Numero = table.Column<string>(type: "TEXT", nullable: false),
                     VigenciaDesde = table.Column<DateOnly>(type: "TEXT", nullable: false),
                     VigenciaHasta = table.Column<DateOnly>(type: "TEXT", nullable: false),
                     Prima = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Producto = table.Column<string>(type: "TEXT", nullable: true),
+                    Premio = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    Cobertura = table.Column<string>(type: "TEXT", nullable: true),
+                    DescripcionRiesgo = table.Column<string>(type: "TEXT", nullable: true),
                     Estado = table.Column<int>(type: "INTEGER", nullable: false),
                     MotivoAnulacion = table.Column<string>(type: "TEXT", nullable: true),
                     EsFlota = table.Column<bool>(type: "INTEGER", nullable: false),
@@ -157,6 +183,12 @@ namespace Seguros.Data.Migrations
                         name: "FK_Polizas_Productores_ProductorId",
                         column: x => x.ProductorId,
                         principalTable: "Productores",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Polizas_Ramos_RamoId",
+                        column: x => x.RamoId,
+                        principalTable: "Ramos",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -237,17 +269,42 @@ namespace Seguros.Data.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.InsertData(
+                table: "Ramos",
+                columns: new[] { "Id", "Nombre" },
+                values: new object[,]
+                {
+                    { 1, "Autos" },
+                    { 2, "Motos" },
+                    { 3, "Vida" },
+                    { 4, "Vida Colectivo" },
+                    { 5, "Vida Individual" },
+                    { 6, "Vida Obligatorio" },
+                    { 7, "Incendio" },
+                    { 8, "Combinado Familiar" },
+                    { 9, "Responsabilidad Civil" },
+                    { 10, "Accidentes Personales" },
+                    { 11, "Integral de Comercio" },
+                    { 12, "Caución" },
+                    { 13, "Transporte / Cascos" }
+                });
+
             migrationBuilder.CreateIndex(
-                name: "IX_Asegurados_ProductorId_Documento",
+                name: "IX_Asegurados_ProductorId_TipoDocumento_NroDocumento",
                 table: "Asegurados",
-                columns: new[] { "ProductorId", "Documento" },
+                columns: new[] { "ProductorId", "TipoDocumento", "NroDocumento" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_CompaniaRamos_CompaniaId_Ramo",
+                name: "IX_CompaniaRamos_CompaniaId_RamoId",
                 table: "CompaniaRamos",
-                columns: new[] { "CompaniaId", "Ramo" },
+                columns: new[] { "CompaniaId", "RamoId" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CompaniaRamos_RamoId",
+                table: "CompaniaRamos",
+                column: "RamoId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Endosos_PolizaId",
@@ -291,9 +348,20 @@ namespace Seguros.Data.Migrations
                 column: "ProductorId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Polizas_RamoId",
+                table: "Polizas",
+                column: "RamoId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Productores_NombreUsuario",
                 table: "Productores",
                 column: "NombreUsuario",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Ramos_Nombre",
+                table: "Ramos",
+                column: "Nombre",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -328,6 +396,9 @@ namespace Seguros.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Companias");
+
+            migrationBuilder.DropTable(
+                name: "Ramos");
 
             migrationBuilder.DropTable(
                 name: "Productores");

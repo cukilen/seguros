@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using Microsoft.EntityFrameworkCore;
 using Seguros.Data.Importacion;
 using Seguros.Data.Services;
 using Seguros.Domain.Enums;
@@ -12,32 +13,41 @@ public class ImportacionServiceTests : IDisposable
     private readonly SqliteTestContext _ctx = new();
     private readonly ImportacionService _service;
     private int _productorId;
+    private int _companiaId;
     private readonly string _archivoXlsTemporal = Path.Combine(Path.GetTempPath(), $"seguros-test-{Guid.NewGuid():N}.xlsx");
 
     public ImportacionServiceTests()
     {
         _service = new ImportacionService(_ctx.Db);
-        _productorId = Preparar().GetAwaiter().GetResult();
+        (_productorId, _companiaId) = Preparar().GetAwaiter().GetResult();
     }
 
-    private async Task<int> Preparar()
+    private async Task<(int productorId, int companiaId)> Preparar()
     {
         var productor = await new ProductorService(_ctx.Db).AltaProductor("P", "p1", "clave");
-        await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { Ramo.Autos });
-        return productor.Id;
+        var compania = await new CompaniaService(_ctx.Db).AltaCompania("La Segunda", new[] { _ctx.RamoAutosId });
+        return (productor.Id, compania.Id);
     }
 
-    private void CrearXlsDePrueba()
+    private void CrearXlsDePrueba(bool conColumnaCompania = true)
     {
         using var workbook = new XLWorkbook();
         var hoja = workbook.Worksheets.Add("Polizas");
-        string[] encabezados = { "Documento", "Asegurado", "Compania", "Ramo", "Nro Poliza", "Desde", "Hasta", "Prima" };
-        for (var i = 0; i < encabezados.Length; i++) hoja.Cell(1, i + 1).Value = encabezados[i];
+        var encabezados = new List<string> { "Documento", "Asegurado" };
+        if (conColumnaCompania) encabezados.Add("Compania");
+        encabezados.AddRange(new[] { "Ramo", "Nro Poliza", "Desde", "Hasta", "Prima" });
 
-        hoja.Cell(2, 1).Value = "30111222"; hoja.Cell(2, 2).Value = "Cliente Uno";
-        hoja.Cell(2, 3).Value = "La Segunda"; hoja.Cell(2, 4).Value = "autos";
-        hoja.Cell(2, 5).Value = "IMP-1"; hoja.Cell(2, 6).Value = "01/01/2026";
-        hoja.Cell(2, 7).Value = "01/01/2027"; hoja.Cell(2, 8).Value = "1500";
+        for (var i = 0; i < encabezados.Count; i++) hoja.Cell(1, i + 1).Value = encabezados[i];
+
+        var col = 1;
+        hoja.Cell(2, col++).Value = "30111222";
+        hoja.Cell(2, col++).Value = "Cliente Uno";
+        if (conColumnaCompania) hoja.Cell(2, col++).Value = "La Segunda";
+        hoja.Cell(2, col++).Value = "autos";
+        hoja.Cell(2, col++).Value = "IMP-1";
+        hoja.Cell(2, col++).Value = "01/01/2026";
+        hoja.Cell(2, col++).Value = "01/01/2027";
+        hoja.Cell(2, col).Value = "1500";
 
         workbook.SaveAs(_archivoXlsTemporal);
     }
@@ -58,7 +68,7 @@ public class ImportacionServiceTests : IDisposable
     {
         var mapeo = _service.AutoDetectarMapeo(new[] { "Documento", "Asegurado", "Compania", "Ramo", "Nro Poliza", "Desde", "Hasta", "Prima" });
 
-        Assert.Equal(CamposImportacion.Documento, mapeo["Documento"]);
+        Assert.Equal(CamposImportacion.NroDocumento, mapeo["Documento"]);
         Assert.Equal(CamposImportacion.NumeroPoliza, mapeo["Nro Poliza"]);
     }
 
@@ -69,11 +79,36 @@ public class ImportacionServiceTests : IDisposable
         var filas = _service.LeerXls(_archivoXlsTemporal);
         var mapeo = _service.AutoDetectarMapeo(filas[0].Keys);
 
-        await new AseguradoService(_ctx.Db).AltaAsegurado(_productorId, "Cliente Uno", "30111222");
+        await new AseguradoService(_ctx.Db).AltaAsegurado(_productorId, "Cliente Uno", TipoDocumento.Dni, "30111222");
 
         var preview = await _service.GenerarVistaPrevia(filas, mapeo, _productorId);
 
         Assert.True(preview.Single().EsPosibleDuplicado);
+    }
+
+    [Fact] // Archivo con columna de compañía
+    public async Task GenerarVistaPrevia_usaLaColumnaDeCompaniaCuandoExiste()
+    {
+        CrearXlsDePrueba(conColumnaCompania: true);
+        var filas = _service.LeerXls(_archivoXlsTemporal);
+        var mapeo = _service.AutoDetectarMapeo(filas[0].Keys);
+
+        var preview = await _service.GenerarVistaPrevia(filas, mapeo, _productorId);
+
+        Assert.Equal("La Segunda", preview.Single().CompaniaNombre);
+    }
+
+    [Fact] // Archivo sin columna de compañía: se usa la compañía elegida para todo el archivo
+    public async Task GenerarVistaPrevia_usaCompaniaPorDefectoCuandoNoHayColumna()
+    {
+        CrearXlsDePrueba(conColumnaCompania: false);
+        var filas = _service.LeerXls(_archivoXlsTemporal);
+        var mapeo = _service.AutoDetectarMapeo(filas[0].Keys);
+
+        var preview = await _service.GenerarVistaPrevia(filas, mapeo, _productorId, companiaIdPorDefecto: _companiaId);
+
+        Assert.Equal("La Segunda", preview.Single().CompaniaNombre);
+        Assert.False(preview.Single().TieneError);
     }
 
     [Fact] // PDF sin datos reconocibles
@@ -106,13 +141,13 @@ public class ImportacionServiceTests : IDisposable
     {
         var itemValido = new ItemImportacion
         {
-            NumeroFila = 1, Documento = "30111222", NombreAsegurado = "Cliente Uno",
+            NumeroFila = 1, NroDocumento = "30111222", NombreAsegurado = "Cliente Uno",
             CompaniaNombre = "La Segunda", RamoTexto = "autos", NumeroPoliza = "IMP-1",
             VigenciaDesdeTexto = "01/01/2026", VigenciaHastaTexto = "01/01/2027", PrimaTexto = "1500"
         };
         var itemConError = new ItemImportacion
         {
-            NumeroFila = 2, ErrorDeteccion = "Falta el documento del asegurado."
+            NumeroFila = 2, ErrorDeteccion = "Falta el nombre del asegurado."
         };
 
         var resultado = await _service.ConfirmarImportacion(_productorId, new[]
@@ -124,6 +159,44 @@ public class ImportacionServiceTests : IDisposable
         Assert.Equal(1, resultado.Importados);
         Assert.Equal(1, resultado.ConError);
         Assert.Single(resultado.Errores);
+    }
+
+    [Fact] // Ramo con nomenclatura específica de una compañía: se agrega solo al catálogo
+    public async Task ConfirmarImportacion_conRamoNuevo_loAgregaAlCatalogo()
+    {
+        var item = new ItemImportacion
+        {
+            NumeroFila = 1, NroDocumento = "30111222", NombreAsegurado = "Cliente Uno",
+            CompaniaNombre = "La Segunda", RamoTexto = "Vida Colectivo Abierto", NumeroPoliza = "IMP-2",
+            VigenciaDesdeTexto = "01/01/2026", VigenciaHastaTexto = "01/01/2027", PrimaTexto = "1500"
+        };
+
+        var resultado = await _service.ConfirmarImportacion(_productorId, new[] { (item, AccionImportacion.Importar) });
+
+        Assert.Equal(1, resultado.Importados);
+        Assert.True(await _ctx.Db.Ramos.AnyAsync(r => r.Nombre == "Vida Colectivo Abierto"));
+    }
+
+    [Fact] // Asegurado sin documento: se importa igual y se detecta posible duplicado por nombre
+    public async Task GenerarVistaPrevia_sinDocumento_detectaDuplicadoPorNombre()
+    {
+        await new AseguradoService(_ctx.Db).AltaAsegurado(_productorId, "Cliente Sin Doc");
+
+        var filas = new List<Dictionary<string, string>>
+        {
+            new()
+            {
+                ["Asegurado"] = "Cliente Sin Doc", ["Compania"] = "La Segunda", ["Ramo"] = "autos",
+                ["Nro Poliza"] = "IMP-3", ["Desde"] = "01/01/2026", ["Hasta"] = "01/01/2027", ["Prima"] = "1500"
+            }
+        };
+        var mapeo = _service.AutoDetectarMapeo(filas[0].Keys);
+
+        var preview = await _service.GenerarVistaPrevia(filas, mapeo, _productorId);
+
+        var item = Assert.Single(preview);
+        Assert.False(item.TieneError);
+        Assert.True(item.EsPosibleDuplicado);
     }
 
     public void Dispose()

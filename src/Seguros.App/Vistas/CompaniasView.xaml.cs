@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using Seguros.Domain.Entities;
-using Seguros.Domain.Enums;
 using Seguros.Domain.Exceptions;
 
 namespace Seguros.App.Vistas;
@@ -14,10 +13,15 @@ public partial class CompaniasView : UserControl
     public CompaniasView()
     {
         InitializeComponent();
-        LstRamos.ItemsSource = Enum.GetValues<Ramo>();
         Grid.ItemsSource = _filas;
-        Loaded += async (_, _) => await Recargar();
+        Loaded += async (_, _) =>
+        {
+            await CargarRamos();
+            await Recargar();
+        };
     }
+
+    private async Task CargarRamos() => LstRamos.ItemsSource = await AppServices.Ramos.Listar();
 
     private async Task Recargar()
     {
@@ -26,31 +30,71 @@ public partial class CompaniasView : UserControl
             _filas.Add(new CompaniaFila(c));
     }
 
-    private async void BtnAgregar_Click(object sender, RoutedEventArgs e)
+    private async void BtnAgregarRamo_Click(object sender, RoutedEventArgs e)
     {
+        if (string.IsNullOrWhiteSpace(TxtNuevoRamo.Text))
+        {
+            Dialogos.Error("Ingresá el nombre del ramo.", "Faltan datos");
+            return;
+        }
+
         try
         {
-            var ramos = LstRamos.SelectedItems.Cast<Ramo>().ToList();
-            await AppServices.Companias.AltaCompania(TxtNombre.Text.Trim(), ramos, TxtTelefono.Text.Trim(), TxtEmail.Text.Trim());
+            await AppServices.Ramos.AltaRamo(TxtNuevoRamo.Text.Trim());
+            TxtNuevoRamo.Clear();
+            await CargarRamos();
+        }
+        catch (ReglaDeNegocioException ex)
+        {
+            Dialogos.Error(ex.Message, "No se pudo agregar el ramo");
+        }
+    }
+
+    private async void BtnAgregar_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(TxtNombre.Text))
+        {
+            Dialogos.Error("Ingresá el nombre de la compañía.", "Faltan datos");
+            return;
+        }
+
+        try
+        {
+            var ramoIds = LstRamos.SelectedItems.Cast<Ramo>().Select(r => r.Id).ToList();
+            await AppServices.Companias.AltaCompania(TxtNombre.Text.Trim(), ramoIds, TxtTelefono.Text.Trim(), TxtEmail.Text.Trim());
             TxtNombre.Clear(); TxtTelefono.Clear(); TxtEmail.Clear(); LstRamos.SelectedItems.Clear();
             await Recargar();
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo agregar", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message);
         }
     }
 
     private async void BtnInactivar_Click(object sender, RoutedEventArgs e)
     {
-        if (Grid.SelectedItem is not CompaniaFila fila) return;
+        if (Grid.SelectedItem is not CompaniaFila fila)
+        {
+            Dialogos.Error("Seleccioná primero una compañía de la lista.", "Nada seleccionado");
+            return;
+        }
+        if (!Dialogos.Confirmar($"¿Inactivar la compañía \"{fila.Nombre}\"? Dejará de estar disponible para nuevas pólizas, pero se puede reactivar más adelante.", "Confirmar inactivación"))
+            return;
+
         await AppServices.Companias.InactivarCompania(fila.Id);
         await Recargar();
     }
 
     private async void BtnEliminar_Click(object sender, RoutedEventArgs e)
     {
-        if (Grid.SelectedItem is not CompaniaFila fila) return;
+        if (Grid.SelectedItem is not CompaniaFila fila)
+        {
+            Dialogos.Error("Seleccioná primero una compañía de la lista.", "Nada seleccionado");
+            return;
+        }
+        if (!Dialogos.Confirmar($"¿Eliminar definitivamente la compañía \"{fila.Nombre}\"? Esta acción no se puede deshacer.", "Confirmar eliminación"))
+            return;
+
         try
         {
             await AppServices.Companias.EliminarCompania(fila.Id);
@@ -58,7 +102,7 @@ public partial class CompaniasView : UserControl
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo eliminar", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message, "No se pudo eliminar");
         }
     }
 
@@ -67,7 +111,7 @@ public partial class CompaniasView : UserControl
         public CompaniaFila(Compania c)
         {
             Id = c.Id; Nombre = c.Nombre; Telefono = c.Telefono; Email = c.Email; Activa = c.Activa;
-            RamosTexto = string.Join(", ", c.RamosOperados.Select(r => r.Ramo));
+            RamosTexto = string.Join(", ", c.RamosOperados.Select(r => r.Ramo.Nombre));
         }
 
         public int Id { get; }

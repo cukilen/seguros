@@ -16,7 +16,7 @@ public class CompaniaServiceTests : IDisposable
     [Fact] // Alta exitosa
     public async Task AltaCompania_conNombreYRamo_quedaDisponibleParaPolizas()
     {
-        var compania = await _service.AltaCompania("La Segunda", new[] { Ramo.Autos, Ramo.Vida });
+        var compania = await _service.AltaCompania("La Segunda", new[] { _ctx.RamoAutosId, _ctx.RamoVidaId });
 
         var listado = await _service.ListarCompanias();
 
@@ -27,13 +27,13 @@ public class CompaniaServiceTests : IDisposable
     public async Task AltaCompania_sinNombre_esRechazada()
     {
         await Assert.ThrowsAsync<ReglaDeNegocioException>(
-            () => _service.AltaCompania("", new[] { Ramo.Autos }));
+            () => _service.AltaCompania("", new[] { _ctx.RamoAutosId }));
     }
 
     [Fact] // Actualización de datos de contacto
     public async Task EditarDatosContacto_actualizaTelefonoYEmail()
     {
-        var compania = await _service.AltaCompania("Sancor", new[] { Ramo.Incendio });
+        var compania = await _service.AltaCompania("Sancor", new[] { _ctx.RamoAutosId });
 
         await _service.EditarDatosContacto(compania.Id, "011-1234", "contacto@sancor.com");
 
@@ -44,7 +44,7 @@ public class CompaniaServiceTests : IDisposable
     [Fact] // Intento de eliminar compañía con pólizas vigentes
     public async Task EliminarCompania_conPolizasAsociadas_esRechazada()
     {
-        var compania = await _service.AltaCompania("Mercantil Andina", new[] { Ramo.Autos });
+        var compania = await _service.AltaCompania("Mercantil Andina", new[] { _ctx.RamoAutosId });
         await CrearPolizaDePrueba(compania.Id);
 
         await Assert.ThrowsAsync<ReglaDeNegocioException>(() => _service.EliminarCompania(compania.Id));
@@ -53,7 +53,7 @@ public class CompaniaServiceTests : IDisposable
     [Fact] // Inactivación de compañía sin pólizas
     public async Task InactivarCompania_sinPolizas_quedaInactiva()
     {
-        var compania = await _service.AltaCompania("Zurich", new[] { Ramo.Vida });
+        var compania = await _service.AltaCompania("Zurich", new[] { _ctx.RamoVidaId });
 
         await _service.InactivarCompania(compania.Id);
 
@@ -64,8 +64,8 @@ public class CompaniaServiceTests : IDisposable
     private async Task CrearPolizaDePrueba(int companiaId)
     {
         var productor = (await new ProductorService(_ctx.Db).AltaProductor("P", "p1", "clave")).Id;
-        var asegurado = (await new AseguradoService(_ctx.Db).AltaAsegurado(productor, "Cliente", "20111222")).Id;
-        await new PolizaService(_ctx.Db).AltaPoliza(productor, asegurado, companiaId, Ramo.Autos, "P-1",
+        var asegurado = (await new AseguradoService(_ctx.Db).AltaAsegurado(productor, "Cliente", TipoDocumento.Dni, "20111222")).Id;
+        await new PolizaService(_ctx.Db).AltaPoliza(productor, asegurado, companiaId, _ctx.RamoAutosId, "P-1",
             DateOnly.FromDateTime(DateTime.Today), DateOnly.FromDateTime(DateTime.Today.AddYears(1)), 1000m);
     }
 

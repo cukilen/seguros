@@ -13,34 +13,34 @@ public class VencimientoService
     public VencimientoService(SegurosDbContext db) => _db = db;
 
     /// <summary>Pólizas vigentes cuyo vencimiento cae dentro de la ventana de días indicada (por defecto 30).</summary>
-    public async Task<List<Poliza>> ListarProximasAVencer(int diasVentana = 30, int? productorId = null, int? companiaId = null, Ramo? ramo = null)
+    public async Task<List<Poliza>> ListarProximasAVencer(int diasVentana = 30, int? productorId = null, int? companiaId = null, int? ramoId = null)
     {
         var hoy = DateOnly.FromDateTime(DateTime.Today);
         var limite = hoy.AddDays(diasVentana);
 
-        var query = _db.Polizas.Include(p => p.Compania).Include(p => p.Asegurado)
+        var query = _db.Polizas.Include(p => p.Compania).Include(p => p.Asegurado).Include(p => p.Ramo)
             .Where(p => p.Estado == EstadoPoliza.Vigente
                         && !p.VencimientoGestionado
                         && p.VigenciaHasta <= limite);
 
         if (productorId is not null) query = query.Where(p => p.ProductorId == productorId);
         if (companiaId is not null) query = query.Where(p => p.CompaniaId == companiaId);
-        if (ramo is not null) query = query.Where(p => p.Ramo == ramo);
+        if (ramoId is not null) query = query.Where(p => p.RamoId == ramoId);
 
         return await query.OrderBy(p => p.VigenciaHasta).ToListAsync();
     }
 
-    public async Task<List<Poliza>> ListarVencidas(int? productorId = null, int? companiaId = null, Ramo? ramo = null)
+    public async Task<List<Poliza>> ListarVencidas(int? productorId = null, int? companiaId = null, int? ramoId = null)
     {
         var hoy = DateOnly.FromDateTime(DateTime.Today);
-        var query = _db.Polizas.Include(p => p.Compania).Include(p => p.Asegurado)
+        var query = _db.Polizas.Include(p => p.Compania).Include(p => p.Asegurado).Include(p => p.Ramo)
             .Where(p => p.Estado == EstadoPoliza.Vigente
                         && !p.VencimientoGestionado
                         && p.VigenciaHasta < hoy);
 
         if (productorId is not null) query = query.Where(p => p.ProductorId == productorId);
         if (companiaId is not null) query = query.Where(p => p.CompaniaId == companiaId);
-        if (ramo is not null) query = query.Where(p => p.Ramo == ramo);
+        if (ramoId is not null) query = query.Where(p => p.RamoId == ramoId);
 
         return await query.OrderBy(p => p.VigenciaHasta).ToListAsync();
     }

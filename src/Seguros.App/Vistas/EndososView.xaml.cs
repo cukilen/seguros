@@ -33,7 +33,12 @@ public partial class EndososView : UserControl
     {
         if (CmbPoliza.SelectedItem is not Poliza p)
         {
-            MessageBox.Show("Elegí primero una póliza.", "Falta seleccionar", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error("Elegí primero una póliza.", "Nada seleccionado");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(TxtTipo.Text))
+        {
+            Dialogos.Error("Indicá el tipo de endoso.", "Faltan datos");
             return;
         }
 
@@ -46,13 +51,25 @@ public partial class EndososView : UserControl
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo agregar el endoso", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message, "No se pudo agregar el endoso");
         }
     }
 
     private async void BtnAnular_Click(object sender, RoutedEventArgs e)
     {
-        if (Grid.SelectedItem is not Endoso endoso) return;
+        if (Grid.SelectedItem is not Endoso endoso)
+        {
+            Dialogos.Error("Seleccioná primero un endoso de la lista.", "Nada seleccionado");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(TxtMotivoAnulacion.Text))
+        {
+            Dialogos.Error("Indicá el motivo de la anulación.", "Faltan datos");
+            return;
+        }
+        if (!Dialogos.Confirmar("¿Anular este endoso?", "Confirmar anulación"))
+            return;
+
         await AppServices.Endosos.AnularEndoso(endoso.Id, TxtMotivoAnulacion.Text.Trim());
         TxtMotivoAnulacion.Clear();
         CmbPoliza_SelectionChanged(sender, null!);

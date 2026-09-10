@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Seguros.Domain.Entities;
-using Seguros.Domain.Enums;
 using Seguros.Domain.Exceptions;
 
 namespace Seguros.Data.Services;
@@ -12,14 +11,14 @@ public class ComisionService
 
     public ComisionService(SegurosDbContext db) => _db = db;
 
-    public async Task ConfigurarComision(int companiaId, Ramo ramo, decimal porcentaje)
+    public async Task ConfigurarComision(int companiaId, int ramoId, decimal porcentaje)
     {
         var companiaRamo = await _db.CompaniaRamos
-            .FirstOrDefaultAsync(cr => cr.CompaniaId == companiaId && cr.Ramo == ramo);
+            .FirstOrDefaultAsync(cr => cr.CompaniaId == companiaId && cr.RamoId == ramoId);
 
         if (companiaRamo is null)
         {
-            companiaRamo = new CompaniaRamo { CompaniaId = companiaId, Ramo = ramo };
+            companiaRamo = new CompaniaRamo { CompaniaId = companiaId, RamoId = ramoId };
             _db.CompaniaRamos.Add(companiaRamo);
         }
 
@@ -34,7 +33,7 @@ public class ComisionService
             ?? throw new ReglaDeNegocioException("Póliza no encontrada.");
 
         var companiaRamo = await _db.CompaniaRamos
-            .FirstOrDefaultAsync(cr => cr.CompaniaId == poliza.CompaniaId && cr.Ramo == poliza.Ramo);
+            .FirstOrDefaultAsync(cr => cr.CompaniaId == poliza.CompaniaId && cr.RamoId == poliza.RamoId);
 
         if (companiaRamo?.PorcentajeComision is null) return null;
 

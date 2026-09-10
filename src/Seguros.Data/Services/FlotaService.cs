@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Seguros.Domain.Entities;
-using Seguros.Domain.Enums;
 using Seguros.Domain.Exceptions;
 
 namespace Seguros.Data.Services;
@@ -14,12 +13,13 @@ public class FlotaService
 
     public async Task MarcarComoFlota(int polizaId)
     {
-        var poliza = await _db.Polizas.FindAsync(polizaId)
+        var poliza = await _db.Polizas.Include(p => p.Ramo).FirstOrDefaultAsync(p => p.Id == polizaId)
             ?? throw new ReglaDeNegocioException("Póliza no encontrada.");
-        if (poliza.Ramo != Ramo.Autos)
+        if (!PolizaService.EsRamoAutos(poliza.Ramo))
             throw new ReglaDeNegocioException("Sólo una póliza del ramo autos puede marcarse como flota.");
 
         poliza.EsFlota = true;
+        poliza.DescripcionRiesgo = null;
         await _db.SaveChangesAsync();
     }
 

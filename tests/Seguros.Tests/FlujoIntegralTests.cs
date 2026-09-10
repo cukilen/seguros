@@ -26,15 +26,15 @@ public class FlujoIntegralTests : IDisposable
         Assert.NotNull(await productores.Login("juan", "clave123"));
 
         // 2. Alta de compañía
-        var compania = await companias.AltaCompania("La Segunda", new[] { Ramo.Autos });
-        await comisiones.ConfigurarComision(compania.Id, Ramo.Autos, 12m);
+        var compania = await companias.AltaCompania("La Segunda", new[] { _ctx.RamoAutosId });
+        await comisiones.ConfigurarComision(compania.Id, _ctx.RamoAutosId, 12m);
 
         // 3. Alta de asegurado
-        var asegurado = await asegurados.AltaAsegurado(productor.Id, "María López", "27333444");
+        var asegurado = await asegurados.AltaAsegurado(productor.Id, "María López", TipoDocumento.Dni, "27333444");
 
         // 4. Alta de póliza de flota
         var hoy = DateOnly.FromDateTime(DateTime.Today);
-        var poliza = await polizas.AltaPoliza(productor.Id, asegurado.Id, compania.Id, Ramo.Autos, "P-100",
+        var poliza = await polizas.AltaPoliza(productor.Id, asegurado.Id, compania.Id, _ctx.RamoAutosId, "P-100",
             hoy.AddDays(-350), hoy.AddDays(10), 10000m, esFlota: true);
 
         await flotas.MarcarComoFlota(poliza.Id);

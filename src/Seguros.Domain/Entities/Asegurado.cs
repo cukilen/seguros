@@ -1,3 +1,5 @@
+using Seguros.Domain.Enums;
+
 namespace Seguros.Domain.Entities;
 
 public class Asegurado
@@ -7,7 +9,11 @@ public class Asegurado
     public Productor Productor { get; set; } = null!;
 
     public string Nombre { get; set; } = string.Empty;
-    public string Documento { get; set; } = string.Empty;
+
+    /// <summary>Documento opcional: no todas las fuentes de datos lo proveen (specs/asegurados).</summary>
+    public TipoDocumento? TipoDocumento { get; set; }
+    public string? NroDocumento { get; set; }
+
     public string? Telefono { get; set; }
     public string? Email { get; set; }
     public string? Domicilio { get; set; }

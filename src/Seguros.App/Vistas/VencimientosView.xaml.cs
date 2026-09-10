@@ -37,7 +37,12 @@ public partial class VencimientosView : UserControl
 
     private async void BtnMarcarGestionado_Click(object sender, RoutedEventArgs e)
     {
-        if (Grid.SelectedItem is not Poliza p) return;
+        if (Grid.SelectedItem is not Poliza p)
+        {
+            Dialogos.Error("Seleccioná primero una póliza de la lista.", "Nada seleccionado");
+            return;
+        }
+
         await AppServices.Vencimientos.MarcarComoGestionado(p.Id);
         await Mostrar(proximas: true);
     }

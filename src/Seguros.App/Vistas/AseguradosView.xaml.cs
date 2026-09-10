@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using Seguros.Domain.Entities;
+using Seguros.Domain.Enums;
 using Seguros.Domain.Exceptions;
 
 namespace Seguros.App.Vistas;
@@ -13,6 +14,7 @@ public partial class AseguradosView : UserControl
     public AseguradosView()
     {
         InitializeComponent();
+        CmbTipoDocumento.ItemsSource = Enum.GetValues<TipoDocumento>();
         Grid.ItemsSource = _filas;
         Loaded += async (_, _) => await Recargar();
     }
@@ -26,16 +28,31 @@ public partial class AseguradosView : UserControl
 
     private async void BtnAgregar_Click(object sender, RoutedEventArgs e)
     {
+        if (string.IsNullOrWhiteSpace(TxtNombre.Text))
+        {
+            Dialogos.Error("Ingresá el nombre del asegurado.", "Faltan datos");
+            return;
+        }
+        if (CmbTipoDocumento.SelectedItem is null != string.IsNullOrWhiteSpace(TxtDocumento.Text))
+        {
+            Dialogos.Error("Indicá tipo y número de documento juntos, o dejá ambos vacíos.", "Datos incompletos");
+            return;
+        }
+
         try
         {
+            TipoDocumento? tipoDocumento = CmbTipoDocumento.SelectedItem is TipoDocumento t ? t : null;
+            var nroDocumento = string.IsNullOrWhiteSpace(TxtDocumento.Text) ? null : TxtDocumento.Text.Trim();
+
             await AppServices.Asegurados.AltaAsegurado(AppServices.ProductorActual.Id, TxtNombre.Text.Trim(),
-                TxtDocumento.Text.Trim(), TxtTelefono.Text.Trim(), TxtEmail.Text.Trim(), TxtDomicilio.Text.Trim());
-            TxtNombre.Clear(); TxtDocumento.Clear(); TxtTelefono.Clear(); TxtEmail.Clear(); TxtDomicilio.Clear();
+                tipoDocumento, nroDocumento, TxtTelefono.Text.Trim(), TxtEmail.Text.Trim(), TxtDomicilio.Text.Trim());
+            TxtNombre.Clear(); TxtDocumento.Clear(); CmbTipoDocumento.SelectedIndex = -1;
+            TxtTelefono.Clear(); TxtEmail.Clear(); TxtDomicilio.Clear();
             await Recargar();
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo agregar", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message);
         }
     }
 
@@ -50,14 +67,28 @@ public partial class AseguradosView : UserControl
 
     private async void BtnInactivar_Click(object sender, RoutedEventArgs e)
     {
-        if (Grid.SelectedItem is not Asegurado a) return;
+        if (Grid.SelectedItem is not Asegurado a)
+        {
+            Dialogos.Error("Seleccioná primero un asegurado de la lista.", "Nada seleccionado");
+            return;
+        }
+        if (!Dialogos.Confirmar($"¿Inactivar a \"{a.Nombre}\"? Se puede reactivar más adelante.", "Confirmar inactivación"))
+            return;
+
         await AppServices.Asegurados.InactivarAsegurado(a.Id);
         await Recargar();
     }
 
     private async void BtnEliminar_Click(object sender, RoutedEventArgs e)
     {
-        if (Grid.SelectedItem is not Asegurado a) return;
+        if (Grid.SelectedItem is not Asegurado a)
+        {
+            Dialogos.Error("Seleccioná primero un asegurado de la lista.", "Nada seleccionado");
+            return;
+        }
+        if (!Dialogos.Confirmar($"¿Eliminar definitivamente a \"{a.Nombre}\"? Esta acción no se puede deshacer.", "Confirmar eliminación"))
+            return;
+
         try
         {
             await AppServices.Asegurados.EliminarAsegurado(a.Id);
@@ -65,7 +96,7 @@ public partial class AseguradosView : UserControl
         }
         catch (ReglaDeNegocioException ex)
         {
-            MessageBox.Show(ex.Message, "No se pudo eliminar", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogos.Error(ex.Message, "No se pudo eliminar");
         }
     }
 

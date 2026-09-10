@@ -8,6 +8,7 @@ public class SegurosDbContext : DbContext
     public DbSet<Productor> Productores => Set<Productor>();
     public DbSet<Compania> Companias => Set<Compania>();
     public DbSet<CompaniaRamo> CompaniaRamos => Set<CompaniaRamo>();
+    public DbSet<Ramo> Ramos => Set<Ramo>();
     public DbSet<Asegurado> Asegurados => Set<Asegurado>();
     public DbSet<Poliza> Polizas => Set<Poliza>();
     public DbSet<UnidadFlota> UnidadesFlota => Set<UnidadFlota>();
@@ -23,12 +24,20 @@ public class SegurosDbContext : DbContext
             .HasIndex(p => p.NombreUsuario)
             .IsUnique();
 
+        modelBuilder.Entity<Ramo>()
+            .Property(r => r.Nombre)
+            .UseCollation("NOCASE");
+
+        modelBuilder.Entity<Ramo>()
+            .HasIndex(r => r.Nombre)
+            .IsUnique();
+
         modelBuilder.Entity<CompaniaRamo>()
-            .HasIndex(cr => new { cr.CompaniaId, cr.Ramo })
+            .HasIndex(cr => new { cr.CompaniaId, cr.RamoId })
             .IsUnique();
 
         modelBuilder.Entity<Asegurado>()
-            .HasIndex(a => new { a.ProductorId, a.Documento })
+            .HasIndex(a => new { a.ProductorId, a.TipoDocumento, a.NroDocumento })
             .IsUnique();
 
         modelBuilder.Entity<Poliza>()
@@ -43,6 +52,10 @@ public class SegurosDbContext : DbContext
 
         modelBuilder.Entity<Poliza>()
             .Property(p => p.Prima)
+            .HasColumnType("decimal(18,2)");
+
+        modelBuilder.Entity<Poliza>()
+            .Property(p => p.Premio)
             .HasColumnType("decimal(18,2)");
 
         modelBuilder.Entity<CompaniaRamo>()
@@ -62,5 +75,8 @@ public class SegurosDbContext : DbContext
             .WithMany()
             .HasForeignKey(d => d.PolizaId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Ramo>().HasData(
+            SembrarRamos.Catalogo);
     }
 }

@@ -15,6 +15,7 @@ public static class AppServices
     public static SegurosDbContext Db { get; private set; } = null!;
     public static ProductorService Productores { get; private set; } = null!;
     public static CompaniaService Companias { get; private set; } = null!;
+    public static RamoService Ramos { get; private set; } = null!;
     public static AseguradoService Asegurados { get; private set; } = null!;
     public static PolizaService Polizas { get; private set; } = null!;
     public static FlotaService Flotas { get; private set; } = null!;
@@ -38,6 +39,7 @@ public static class AppServices
 
         Productores = new ProductorService(Db);
         Companias = new CompaniaService(Db);
+        Ramos = new RamoService(Db);
         Asegurados = new AseguradoService(Db);
         Polizas = new PolizaService(Db);
         Flotas = new FlotaService(Db);

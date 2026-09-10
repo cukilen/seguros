@@ -13,26 +13,30 @@
         <GroupBox Header="Nuevo asegurado" Grid.Row="0" Padding="8" Margin="0,0,0,8">
             <StackPanel Orientation="Horizontal">
                 <StackPanel Margin="0,0,12,0">
-                    <TextBlock Text="Nombre"/>
+                    <TextBlock Text="Nombre" Style="{StaticResource Etiqueta}"/>
                     <TextBox x:Name="TxtNombre" Width="160"/>
                 </StackPanel>
-                <StackPanel Margin="0,0,12,0">
-                    <TextBlock Text="Documento"/>
-                    <TextBox x:Name="TxtDocumento" Width="120"/>
+                <StackPanel Margin="0,0,4,0">
+                    <TextBlock Text="Tipo doc." Style="{StaticResource Etiqueta}"/>
+                    <ComboBox x:Name="CmbTipoDocumento" Width="80"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,12,0">
-                    <TextBlock Text="Teléfono"/>
+                    <TextBlock Text="N.º documento (opcional)" Style="{StaticResource Etiqueta}"/>
+                    <TextBox x:Name="TxtDocumento" Width="110"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,0">
+                    <TextBlock Text="Teléfono" Style="{StaticResource Etiqueta}"/>
                     <TextBox x:Name="TxtTelefono" Width="120"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,12,0">
-                    <TextBlock Text="Email"/>
+                    <TextBlock Text="Email" Style="{StaticResource Etiqueta}"/>
                     <TextBox x:Name="TxtEmail" Width="160"/>
                 </StackPanel>
                 <StackPanel Margin="0,0,12,0">
-                    <TextBlock Text="Domicilio"/>
+                    <TextBlock Text="Domicilio" Style="{StaticResource Etiqueta}"/>
                     <TextBox x:Name="TxtDomicilio" Width="160"/>
                 </StackPanel>
-                <Button Content="Agregar" VerticalAlignment="Bottom" Height="26" Click="BtnAgregar_Click"/>
+                <Button Content="Agregar" VerticalAlignment="Bottom" Click="BtnAgregar_Click"/>
             </StackPanel>
         </GroupBox>
 
@@ -47,22 +51,23 @@
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="40"/>
                 <DataGridTextColumn Header="Nombre" Binding="{Binding Nombre}" Width="180"/>
-                <DataGridTextColumn Header="Documento" Binding="{Binding Documento}" Width="120"/>
+                <DataGridTextColumn Header="Tipo doc." Binding="{Binding TipoDocumento}" Width="70"/>
+                <DataGridTextColumn Header="Documento" Binding="{Binding NroDocumento}" Width="100"/>
                 <DataGridTextColumn Header="Teléfono" Binding="{Binding Telefono}" Width="120"/>
-                <DataGridCheckBoxColumn Header="Activo" Binding="{Binding Activo}" Width="60"/>
+                <DataGridCheckBoxColumn Header="Activo" Binding="{Binding Activo, Mode=OneWay}" IsReadOnly="True" Width="60"/>
             </DataGrid.Columns>
         </DataGrid>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,4">
-            <Button Content="Inactivar seleccionado" Click="BtnInactivar_Click" Margin="0,0,8,0"/>
-            <Button Content="Eliminar seleccionado" Click="BtnEliminar_Click"/>
+            <Button Content="Inactivar seleccionado" Style="{StaticResource BotonSecundario}" Click="BtnInactivar_Click" Margin="0,0,8,0"/>
+            <Button Content="Eliminar seleccionado" Style="{StaticResource BotonPeligro}" Click="BtnEliminar_Click"/>
         </StackPanel>
 
         <GroupBox Header="Pólizas del asegurado seleccionado (todas las compañías y ramos)" Grid.Row="4">
             <DataGrid x:Name="GridPolizas" AutoGenerateColumns="False" IsReadOnly="True">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Compañía" Binding="{Binding Compania.Nombre}" Width="150"/>
-                    <DataGridTextColumn Header="Ramo" Binding="{Binding Ramo}" Width="130"/>
+                    <DataGridTextColumn Header="Ramo" Binding="{Binding Ramo.Nombre}" Width="130"/>
                     <DataGridTextColumn Header="Número" Binding="{Binding Numero}" Width="100"/>
                     <DataGridTextColumn Header="Vigencia desde" Binding="{Binding VigenciaDesde}" Width="110"/>
                     <DataGridTextColumn Header="Vigencia hasta" Binding="{Binding VigenciaHasta}" Width="110"/>
