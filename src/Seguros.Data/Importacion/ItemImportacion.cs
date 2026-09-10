@@ -13,11 +13,12 @@ public static class CamposImportacion
     public const string VigenciaDesde = "VigenciaDesde";
     public const string VigenciaHasta = "VigenciaHasta";
     public const string Prima = "Prima";
+    public const string Estado = "Estado";
 
     public static readonly string[] Todos =
     {
         TipoDocumento, NroDocumento, NombreAsegurado, Telefono, CompaniaNombre, Ramo,
-        NumeroPoliza, VigenciaDesde, VigenciaHasta, Prima
+        NumeroPoliza, VigenciaDesde, VigenciaHasta, Prima, Estado
     };
 }
 
@@ -45,6 +46,9 @@ public class ItemImportacion
     public string? VigenciaDesdeTexto { get; set; }
     public string? VigenciaHastaTexto { get; set; }
     public string? PrimaTexto { get; set; }
+
+    /// <summary>Estado de la póliza según el archivo (ej. "Vigente", "Anulada"). Si no se mapea, se asume vigente.</summary>
+    public string? EstadoTexto { get; set; }
 
     /// <summary>Ya existe un asegurado con este documento (o el mismo nombre, si no hay documento) o una póliza con este número.</summary>
     public bool EsPosibleDuplicado { get; set; }

@@ -24,11 +24,23 @@ public static class ParseoImportacion
         return false;
     }
 
+    /// <summary>Prefijos de moneda observados en archivos reales (además de "$" suelto).</summary>
+    private static readonly string[] PrefijosMoneda = { "U$S", "USD", "AR$", "$" };
+
     public static bool TryParseMonto(string? texto, out decimal monto)
     {
         monto = default;
         if (string.IsNullOrWhiteSpace(texto)) return false;
-        texto = texto.Trim().TrimStart('$').Trim();
+        texto = texto.Trim();
+
+        foreach (var prefijo in PrefijosMoneda)
+        {
+            if (texto.StartsWith(prefijo, StringComparison.OrdinalIgnoreCase))
+            {
+                texto = texto[prefijo.Length..].Trim();
+                break;
+            }
+        }
 
         // es-AR: punto de miles, coma decimal (ej. "20621,3")
         if (decimal.TryParse(texto, NumberStyles.Number, EsAr, out monto)) return true;

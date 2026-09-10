@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
 using Seguros.Data.Importacion;
+using Seguros.Domain.Entities;
 
 namespace Seguros.App.Vistas;
 
@@ -13,6 +14,7 @@ public partial class ImportacionView : UserControl
 
     private readonly ObservableCollection<ItemImportacionFila> _filas = new();
     private List<Dictionary<string, string>> _filasCrudas = new();
+    private string? _ultimaRutaArchivo;
 
     public ImportacionView()
     {
@@ -23,21 +25,46 @@ public partial class ImportacionView : UserControl
 
     private void BtnElegirArchivo_Click(object sender, RoutedEventArgs e)
     {
-        var dialogo = new OpenFileDialog { Filter = "Archivos de listado (*.xlsx;*.pdf)|*.xlsx;*.pdf" };
+        var dialogo = new OpenFileDialog { Filter = "Archivos de listado (*.xlsx;*.csv;*.pdf)|*.xlsx;*.csv;*.pdf" };
         if (dialogo.ShowDialog() != true) return;
 
+        _ultimaRutaArchivo = dialogo.FileName;
         TxtArchivo.Text = Path.GetFileName(dialogo.FileName);
+        LeerArchivoSeleccionado();
+    }
+
+    private void BtnReleerArchivo_Click(object sender, RoutedEventArgs e)
+    {
+        if (_ultimaRutaArchivo is null)
+        {
+            Dialogos.Error("Elegí primero un archivo.", "Nada para releer");
+            return;
+        }
+        LeerArchivoSeleccionado();
+    }
+
+    private void LeerArchivoSeleccionado()
+    {
         TxtMensaje.Text = string.Empty;
         _filas.Clear();
         PanelMapeo.Visibility = Visibility.Collapsed;
 
-        var extension = Path.GetExtension(dialogo.FileName).ToLowerInvariant();
+        if (!int.TryParse(TxtFilaEncabezado.Text.Trim(), out var filaEncabezado) || filaEncabezado < 1)
+        {
+            Dialogos.Error("La fila de encabezado tiene que ser un número mayor o igual a 1.", "Dato inválido");
+            return;
+        }
+
+        var extension = Path.GetExtension(_ultimaRutaArchivo!).ToLowerInvariant();
 
         try
         {
-            _filasCrudas = (extension == ".pdf"
-                ? AppServices.Importacion.LeerPdf(dialogo.FileName)
-                : AppServices.Importacion.LeerXls(dialogo.FileName)) ?? new List<Dictionary<string, string>>();
+            _filasCrudas = extension switch
+            {
+                ".pdf" => AppServices.Importacion.LeerPdf(_ultimaRutaArchivo!) ?? new List<Dictionary<string, string>>(),
+                ".csv" => AppServices.Importacion.LeerCsv(_ultimaRutaArchivo!, filaEncabezado),
+                _ => AppServices.Importacion.LeerXls(_ultimaRutaArchivo!, filaEncabezado)
+            };
         }
         catch (Exception ex)
         {
@@ -49,7 +76,7 @@ public partial class ImportacionView : UserControl
         {
             TxtMensaje.Text = extension == ".pdf"
                 ? "No se pudo interpretar una estructura de listado en este PDF. Probá con el archivo XLS de la compañía si lo tenés."
-                : "El archivo no tiene filas de datos.";
+                : "El archivo no tiene filas de datos. Revisá el número de fila de encabezado.";
             return;
         }
 
@@ -76,12 +103,28 @@ public partial class ImportacionView : UserControl
             .Where(f => f.CampoSeleccionado != NoImportar)
             .ToDictionary(f => f.Columna, f => f.CampoSeleccionado!);
 
+        var filasParaPreview = _filasCrudas;
+
+        if (ChkQuedarseConMasReciente.IsChecked == true)
+        {
+            var columnaClave = mapeo.FirstOrDefault(kv => kv.Value == CamposImportacion.NumeroPoliza).Key;
+            var columnaFecha = mapeo.FirstOrDefault(kv => kv.Value == CamposImportacion.VigenciaDesde).Key;
+
+            if (columnaClave is null || columnaFecha is null)
+            {
+                Dialogos.Error("Para quedarte con la fila más reciente por póliza, mapeá primero las columnas de Número de póliza y Vigencia desde.", "Falta mapeo");
+                return;
+            }
+
+            filasParaPreview = AppServices.Importacion.DeduplicarPorMasReciente(_filasCrudas, columnaClave, columnaFecha);
+        }
+
         var tieneColumnaCompania = mapeo.Values.Contains(CamposImportacion.CompaniaNombre);
         int? companiaIdPorDefecto = null;
 
         if (!tieneColumnaCompania)
         {
-            if (CmbCompaniaPorDefecto.SelectedItem is not Seguros.Domain.Entities.Compania compania)
+            if (CmbCompaniaPorDefecto.SelectedItem is not Compania compania)
             {
                 Dialogos.Error("Este archivo no trae una columna de compañía: elegí una compañía para aplicarla a todas las filas.", "Falta la compañía");
                 return;
@@ -89,7 +132,7 @@ public partial class ImportacionView : UserControl
             companiaIdPorDefecto = compania.Id;
         }
 
-        var preview = await AppServices.Importacion.GenerarVistaPrevia(_filasCrudas, mapeo, AppServices.ProductorActual.Id, companiaIdPorDefecto);
+        var preview = await AppServices.Importacion.GenerarVistaPrevia(filasParaPreview, mapeo, AppServices.ProductorActual.Id, companiaIdPorDefecto);
 
         _filas.Clear();
         foreach (var item in preview)

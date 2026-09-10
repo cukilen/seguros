@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using UglyToad.PdfPig;
@@ -5,39 +6,112 @@ using UglyToad.PdfPig;
 namespace Seguros.Data.Importacion;
 
 /// <summary>
-/// Lee archivos XLS/PDF entregados por las compañías como listados tabulares
-/// (specs/importacion-datos). XLS es la fuente principal y confiable; PDF se
-/// trata como "mejor esfuerzo" (ver design.md - Decisión 5).
+/// Lee archivos XLS/CSV/PDF entregados por las compañías como listados tabulares
+/// (specs/importacion-datos). XLS/CSV son las fuentes principales y confiables;
+/// PDF se trata como "mejor esfuerzo" (ver design.md - Decisión 5).
 /// </summary>
 public static class LectorArchivos
 {
-    /// <summary>Primera fila = encabezados, resto = datos. Cada fila es encabezado -> valor.</summary>
-    public static List<Dictionary<string, string>> LeerXls(string rutaArchivo)
+    /// <summary>
+    /// <paramref name="filaEncabezado"/> es el número de fila **tal como se ve en Excel**
+    /// (1-based, contando también filas en blanco) - algunos exports reales traen filas de
+    /// título antes del encabezado real (ej. "CARTERA VIGENTE AL ...", "PAS: 6380").
+    /// </summary>
+    public static List<Dictionary<string, string>> LeerXls(string rutaArchivo, int filaEncabezado = 1)
     {
         using var workbook = new XLWorkbook(rutaArchivo);
         var hoja = workbook.Worksheets.First();
-        var filasUsadas = hoja.RowsUsed().ToList();
-        if (filasUsadas.Count == 0)
+        var rangoUsado = hoja.RangeUsed();
+        if (rangoUsado is null)
             throw new InvalidOperationException("El archivo Excel no tiene filas.");
 
-        var filaEncabezados = filasUsadas[0];
-        var ultimaColumna = filaEncabezados.LastCellUsed()!.Address.ColumnNumber;
-        var encabezados = filaEncabezados.Cells(1, ultimaColumna)
+        var primeraFila = rangoUsado.FirstRow().RowNumber();
+        var ultimaFila = rangoUsado.LastRow().RowNumber();
+        if (filaEncabezado < primeraFila || filaEncabezado > ultimaFila)
+            throw new InvalidOperationException(
+                $"La fila de encabezado indicada ({filaEncabezado}) no existe en el archivo (tiene datos entre las filas {primeraFila} y {ultimaFila}).");
+
+        var primeraColumna = rangoUsado.FirstColumn().ColumnNumber();
+        var ultimaColumna = rangoUsado.LastColumn().ColumnNumber();
+        var filaEncabezados = hoja.Row(filaEncabezado);
+        var encabezados = filaEncabezados.Cells(primeraColumna, ultimaColumna)
             .Select(c => c.GetString().Trim())
             .ToList();
 
         var filas = new List<Dictionary<string, string>>();
-        foreach (var filaHoja in filasUsadas.Skip(1))
+        for (var numeroFila = filaEncabezado + 1; numeroFila <= ultimaFila; numeroFila++)
         {
+            var filaHoja = hoja.Row(numeroFila);
             var valores = new Dictionary<string, string>();
             for (var i = 0; i < encabezados.Count; i++)
-                valores[encabezados[i]] = filaHoja.Cell(i + 1).GetString().Trim();
+                valores[encabezados[i]] = filaHoja.Cell(primeraColumna + i).GetString().Trim();
 
             if (valores.Values.Any(v => !string.IsNullOrWhiteSpace(v)))
                 filas.Add(valores);
         }
 
         return filas;
+    }
+
+    /// <summary>Lee un CSV (o similar delimitado por ";" o ","), detectando el delimitador automáticamente.</summary>
+    public static List<Dictionary<string, string>> LeerCsv(string rutaArchivo, int filaEncabezado = 1)
+    {
+        var lineas = File.ReadAllLines(rutaArchivo);
+        if (lineas.Length == 0)
+            throw new InvalidOperationException("El archivo no tiene filas.");
+        if (filaEncabezado < 1 || filaEncabezado > lineas.Length)
+            throw new InvalidOperationException($"La fila de encabezado indicada ({filaEncabezado}) no existe en el archivo.");
+
+        var indiceEncabezado = filaEncabezado - 1;
+        var lineaEncabezado = lineas[indiceEncabezado];
+        var delimitador = DetectarDelimitador(lineaEncabezado);
+        var encabezados = DividirLineaCsv(lineaEncabezado, delimitador).Select(h => h.Trim()).ToList();
+
+        var filas = new List<Dictionary<string, string>>();
+        for (var i = indiceEncabezado + 1; i < lineas.Length; i++)
+        {
+            if (string.IsNullOrWhiteSpace(lineas[i])) continue;
+
+            var valoresLinea = DividirLineaCsv(lineas[i], delimitador);
+            var valores = new Dictionary<string, string>();
+            for (var c = 0; c < encabezados.Count; c++)
+                valores[encabezados[c]] = c < valoresLinea.Count ? valoresLinea[c].Trim() : string.Empty;
+            filas.Add(valores);
+        }
+
+        return filas;
+    }
+
+    private static char DetectarDelimitador(string lineaEncabezado)
+    {
+        var puntoYComa = lineaEncabezado.Count(c => c == ';');
+        var coma = lineaEncabezado.Count(c => c == ',');
+        return puntoYComa >= coma ? ';' : ',';
+    }
+
+    private static List<string> DividirLineaCsv(string linea, char delimitador)
+    {
+        var campos = new List<string>();
+        var actual = new StringBuilder();
+        var dentroDeComillas = false;
+
+        for (var i = 0; i < linea.Length; i++)
+        {
+            var c = linea[i];
+            if (c == '"')
+            {
+                if (dentroDeComillas && i + 1 < linea.Length && linea[i + 1] == '"') { actual.Append('"'); i++; }
+                else dentroDeComillas = !dentroDeComillas;
+            }
+            else if (c == delimitador && !dentroDeComillas)
+            {
+                campos.Add(actual.ToString());
+                actual.Clear();
+            }
+            else actual.Append(c);
+        }
+        campos.Add(actual.ToString());
+        return campos;
     }
 
     /// <summary>

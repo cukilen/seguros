@@ -11,8 +11,13 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="Elegir archivo (XLS o PDF)..." Click="BtnElegirArchivo_Click" Margin="0,0,12,0"/>
-            <TextBlock x:Name="TxtArchivo" VerticalAlignment="Center" Foreground="Gray"/>
+            <Button Content="Elegir archivo (XLS, CSV o PDF)..." Click="BtnElegirArchivo_Click" Margin="0,0,12,0"/>
+            <StackPanel Margin="0,0,12,0">
+                <TextBlock Text="Fila de encabezado" Style="{StaticResource Etiqueta}"/>
+                <TextBox x:Name="TxtFilaEncabezado" Width="40" Text="1"/>
+            </StackPanel>
+            <Button Content="Releer con esta fila" Style="{StaticResource BotonSecundario}" VerticalAlignment="Bottom" Click="BtnReleerArchivo_Click" Margin="0,0,12,0"/>
+            <TextBlock x:Name="TxtArchivo" VerticalAlignment="Bottom" Foreground="Gray"/>
         </StackPanel>
 
         <TextBlock x:Name="TxtMensaje" Grid.Row="1" Foreground="DarkRed" TextWrapping="Wrap" Margin="0,0,0,8"/>
@@ -33,6 +38,10 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <CheckBox x:Name="ChkQuedarseConMasReciente" Margin="0,8,0,0"
+                          Content="Este archivo trae varias filas por póliza (historial de movimientos): quedarme solo con la más reciente de cada una"/>
+
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <StackPanel Margin="0,0,12,0">
                         <TextBlock Text="Compañía para este archivo (si no hay columna de compañía)" Style="{StaticResource Etiqueta}"/>

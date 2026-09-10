@@ -18,6 +18,7 @@ public static class MapeoColumnas
         [CamposImportacion.VigenciaDesde] = new[] { "vigenciadesde", "desde", "inicio", "fechadesde" },
         [CamposImportacion.VigenciaHasta] = new[] { "vigenciahasta", "hasta", "vencimiento", "fechahasta" },
         [CamposImportacion.Prima] = new[] { "prima", "importe", "monto" },
+        [CamposImportacion.Estado] = new[] { "estado" },
     };
 
     /// <summary>Devuelve columna del archivo -> campo del sistema, para las columnas que se pudieron reconocer.</summary>

@@ -11,12 +11,32 @@ public class ImportacionService
 
     public ImportacionService(SegurosDbContext db) => _db = db;
 
-    public List<Dictionary<string, string>> LeerXls(string rutaArchivo) => LectorArchivos.LeerXls(rutaArchivo);
+    public List<Dictionary<string, string>> LeerXls(string rutaArchivo, int filaEncabezado = 1) =>
+        LectorArchivos.LeerXls(rutaArchivo, filaEncabezado);
+
+    public List<Dictionary<string, string>> LeerCsv(string rutaArchivo, int filaEncabezado = 1) =>
+        LectorArchivos.LeerCsv(rutaArchivo, filaEncabezado);
 
     /// <summary>Null si el PDF no tiene una estructura tabular reconocible (specs/importacion-datos - PDF sin datos reconocibles).</summary>
     public List<Dictionary<string, string>>? LeerPdf(string rutaArchivo) => LectorArchivos.LeerPdf(rutaArchivo);
 
     public Dictionary<string, string> AutoDetectarMapeo(IEnumerable<string> encabezados) => MapeoColumnas.AutoDetectar(encabezados);
+
+    /// <summary>
+    /// Para archivos de historial (varias filas por póliza): se queda con una sola fila por
+    /// cada valor de <paramref name="columnaClave"/>, la de fecha más reciente en
+    /// <paramref name="columnaFecha"/>. Filas sin fecha parseable quedan al final.
+    /// </summary>
+    public List<Dictionary<string, string>> DeduplicarPorMasReciente(
+        List<Dictionary<string, string>> filas, string columnaClave, string columnaFecha)
+    {
+        return filas
+            .GroupBy(f => f.GetValueOrDefault(columnaClave, string.Empty))
+            .Select(grupo => grupo
+                .OrderByDescending(f => ParseoImportacion.TryParseFecha(f.GetValueOrDefault(columnaFecha), out var fecha) ? fecha : DateOnly.MinValue)
+                .First())
+            .ToList();
+    }
 
     /// <summary>
     /// Aplica el mapeo de columnas a cada fila cruda y marca posibles duplicados y errores,
@@ -63,6 +83,7 @@ public class ImportacionService
                     case CamposImportacion.VigenciaDesde: item.VigenciaDesdeTexto = valor; break;
                     case CamposImportacion.VigenciaHasta: item.VigenciaHastaTexto = valor; break;
                     case CamposImportacion.Prima: item.PrimaTexto = valor; break;
+                    case CamposImportacion.Estado: item.EstadoTexto = valor; break;
                 }
             }
 
@@ -104,7 +125,7 @@ public class ImportacionService
             return $"Fecha de inicio de vigencia inválida: '{item.VigenciaDesdeTexto}'.";
         if (!ParseoImportacion.TryParseFecha(item.VigenciaHastaTexto, out _))
             return $"Fecha de fin de vigencia inválida: '{item.VigenciaHastaTexto}'.";
-        if (!ParseoImportacion.TryParseMonto(item.PrimaTexto, out _))
+        if (item.PrimaTexto is not null && !ParseoImportacion.TryParseMonto(item.PrimaTexto, out _))
             return $"Prima inválida: '{item.PrimaTexto}'.";
 
         return null;
@@ -122,6 +143,21 @@ public class ImportacionService
         !string.IsNullOrWhiteSpace(texto) && AliasTipoDocumento.TryGetValue(texto.Trim().ToLowerInvariant(), out var tipo)
             ? tipo
             : null;
+
+    /// <summary>
+    /// Interpreta el estado de la póliza según el texto del archivo. Si no hay columna de
+    /// estado mapeada, o el texto no se reconoce, se asume Vigente (comportamiento anterior).
+    /// </summary>
+    private static EstadoPoliza ParsearEstado(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return EstadoPoliza.Vigente;
+
+        var normalizado = texto.Trim().ToLowerInvariant();
+        if (normalizado.Contains("anula")) return EstadoPoliza.Anulada;
+        if (normalizado.Contains("no vigente") || normalizado.Contains("novigente")) return EstadoPoliza.NoVigente;
+        if (normalizado.Contains("renovada")) return EstadoPoliza.Renovada;
+        return EstadoPoliza.Vigente;
+    }
 
     /// <summary>
     /// Importa los items seleccionados con acción Importar/Actualizar (Omitir se ignora).
@@ -174,7 +210,8 @@ public class ImportacionService
         var ramo = await ObtenerOCrearRamo(item.RamoTexto!);
         ParseoImportacion.TryParseFecha(item.VigenciaDesdeTexto, out var vigenciaDesde);
         ParseoImportacion.TryParseFecha(item.VigenciaHastaTexto, out var vigenciaHasta);
-        ParseoImportacion.TryParseMonto(item.PrimaTexto, out var prima);
+        var prima = 0m;
+        if (item.PrimaTexto is not null) ParseoImportacion.TryParseMonto(item.PrimaTexto, out prima);
 
         Asegurado? asegurado = null;
         var tieneDocumento = !string.IsNullOrWhiteSpace(item.NroDocumento);
@@ -218,7 +255,7 @@ public class ImportacionService
                 VigenciaDesde = vigenciaDesde,
                 VigenciaHasta = vigenciaHasta,
                 Prima = prima,
-                Estado = EstadoPoliza.Vigente
+                Estado = ParsearEstado(item.EstadoTexto)
             };
             _db.Polizas.Add(poliza);
         }
@@ -227,6 +264,7 @@ public class ImportacionService
             poliza.VigenciaDesde = vigenciaDesde;
             poliza.VigenciaHasta = vigenciaHasta;
             poliza.Prima = prima;
+            poliza.Estado = ParsearEstado(item.EstadoTexto);
         }
 
         await _db.SaveChangesAsync();

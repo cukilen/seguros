@@ -177,6 +177,40 @@ public class ImportacionServiceTests : IDisposable
         Assert.True(await _ctx.Db.Ramos.AnyAsync(r => r.Nombre == "Vida Colectivo Abierto"));
     }
 
+    [Fact] // Archivo sin columna de prima (ej. libro de movimientos): se importa con prima 0
+    public async Task ConfirmarImportacion_sinColumnaDePrima_importaConPrimaCero()
+    {
+        var item = new ItemImportacion
+        {
+            NumeroFila = 1, NroDocumento = "30111222", NombreAsegurado = "Cliente Uno",
+            CompaniaNombre = "La Segunda", RamoTexto = "autos", NumeroPoliza = "IMP-9",
+            VigenciaDesdeTexto = "01/01/2026", VigenciaHastaTexto = "01/01/2027", PrimaTexto = null
+        };
+
+        var resultado = await _service.ConfirmarImportacion(_productorId, new[] { (item, AccionImportacion.Importar) });
+
+        Assert.Equal(1, resultado.Importados);
+        var poliza = await _ctx.Db.Polizas.SingleAsync(p => p.Numero == "IMP-9");
+        Assert.Equal(0m, poliza.Prima);
+    }
+
+    [Fact] // Estado de la póliza según el archivo (ej. libro de movimientos con "SOLICITUD ANULACION")
+    public async Task ConfirmarImportacion_conEstadoAnulada_creaLaPolizaComoAnulada()
+    {
+        var item = new ItemImportacion
+        {
+            NumeroFila = 1, NroDocumento = "30111222", NombreAsegurado = "Cliente Uno",
+            CompaniaNombre = "La Segunda", RamoTexto = "autos", NumeroPoliza = "IMP-10",
+            VigenciaDesdeTexto = "01/01/2026", VigenciaHastaTexto = "01/01/2027", PrimaTexto = "1000",
+            EstadoTexto = "SOLICITUD ANULACION"
+        };
+
+        await _service.ConfirmarImportacion(_productorId, new[] { (item, AccionImportacion.Importar) });
+
+        var poliza = await _ctx.Db.Polizas.SingleAsync(p => p.Numero == "IMP-10");
+        Assert.Equal(Seguros.Domain.Enums.EstadoPoliza.Anulada, poliza.Estado);
+    }
+
     [Fact] // Asegurado sin documento: se importa igual y se detecta posible duplicado por nombre
     public async Task GenerarVistaPrevia_sinDocumento_detectaDuplicadoPorNombre()
     {
@@ -197,6 +231,66 @@ public class ImportacionServiceTests : IDisposable
         var item = Assert.Single(preview);
         Assert.False(item.TieneError);
         Assert.True(item.EsPosibleDuplicado);
+    }
+
+    [Fact] // Archivo XLS con filas de título antes del encabezado real (ej. cartera_vigente)
+    public void LeerXls_conFilaDeEncabezadoDistintaDeUno_saltaLasFilasDeTitulo()
+    {
+        using (var workbook = new XLWorkbook())
+        {
+            var hoja = workbook.Worksheets.Add("Cartera");
+            hoja.Cell(1, 1).Value = "CARTERA VIGENTE AL 04/09/2026";
+            hoja.Cell(2, 1).Value = "PAS: 6380";
+            hoja.Cell(3, 1).Value = "Documento";
+            hoja.Cell(3, 2).Value = "Asegurado";
+            hoja.Cell(4, 1).Value = "30111222";
+            hoja.Cell(4, 2).Value = "Cliente Uno";
+            workbook.SaveAs(_archivoXlsTemporal);
+        }
+
+        var filas = _service.LeerXls(_archivoXlsTemporal, filaEncabezado: 3);
+
+        Assert.Single(filas);
+        Assert.Equal("30111222", filas[0]["Documento"]);
+    }
+
+    [Fact] // Carga de archivo CSV (libro de movimientos)
+    public void LeerCsv_delimitadoPorPuntoYComa_devuelveLasFilas()
+    {
+        var rutaCsv = Path.Combine(Path.GetTempPath(), $"seguros-test-{Guid.NewGuid():N}.csv");
+        File.WriteAllLines(rutaCsv, new[]
+        {
+            "Documento;Asegurado;Nro Poliza",
+            "30111222;Cliente Uno;IMP-1"
+        });
+
+        try
+        {
+            var filas = _service.LeerCsv(rutaCsv);
+
+            Assert.Single(filas);
+            Assert.Equal("Cliente Uno", filas[0]["Asegurado"]);
+        }
+        finally
+        {
+            File.Delete(rutaCsv);
+        }
+    }
+
+    [Fact] // Deduplicar un historial de movimientos: se queda con la fila más reciente por póliza
+    public void DeduplicarPorMasReciente_seQuedaConLaFilaMasNuevaPorPoliza()
+    {
+        var filas = new List<Dictionary<string, string>>
+        {
+            new() { ["Poliza"] = "P-1", ["Desde"] = "01/01/2026", ["Prima"] = "1000" },
+            new() { ["Poliza"] = "P-1", ["Desde"] = "01/06/2026", ["Prima"] = "1200" }, // más reciente
+            new() { ["Poliza"] = "P-2", ["Desde"] = "01/03/2026", ["Prima"] = "500" },
+        };
+
+        var resultado = _service.DeduplicarPorMasReciente(filas, "Poliza", "Desde");
+
+        Assert.Equal(2, resultado.Count);
+        Assert.Equal("1200", resultado.Single(f => f["Poliza"] == "P-1")["Prima"]);
     }
 
     public void Dispose()
